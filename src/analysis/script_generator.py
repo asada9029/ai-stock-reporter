@@ -203,7 +203,7 @@ class ScriptGenerator:
 6. 【sector_attention】: `sector_analysis -> sectors` のデータを使用。セクターごとにシーンを分け、そのセクターの騰落率を紹介した後、各主要銘柄の `chart_image_path` を表示し、ニュースを `on_screen_text` で表示しながら変動原因を分析。各銘柄を丁寧に紹介してください。
 7. 【prev_ir_tracking】: `prev_ir_analysis` の銘柄ごとにシーンを作成。`chart_image_path` を表示し、変動率や直近ニュースを `on_screen_text` で表示しながら、前回から今回への変動要因(reason_summary)を説明。データがなければスキップ。
 8. 【tomorrow_strategy】: `us_tonight_outlook` 内のニュースを具体的に参照し、明日の展望を解説。
-9. 【closing】: 今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「明日朝8時のモーニングレポートもお楽しみに！」といった言葉で締めてください。
+9. 【closing】: 今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「明日朝7時のモーニングレポートもお楽しみに！」といった言葉で締めてください。
 
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:

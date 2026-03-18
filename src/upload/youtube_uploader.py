@@ -111,14 +111,14 @@ class YouTubeUploader:
 def get_publish_time(video_type):
     """
     動画タイプに合わせて予約投稿時間を計算する。
-    朝動画: 当日の 08:00 JST
+    朝動画: 当日の 07:00 JST
     夜動画: 当日の 18:00 JST
     """
     jst = pytz.timezone('Asia/Tokyo')
     now = datetime.datetime.now(jst)
     
     if "morning" in video_type:
-        publish_time = now.replace(hour=8, minute=0, second=0, microsecond=0)
+        publish_time = now.replace(hour=7, minute=0, second=0, microsecond=0)
     else:
         publish_time = now.replace(hour=18, minute=0, second=0, microsecond=0)
     
