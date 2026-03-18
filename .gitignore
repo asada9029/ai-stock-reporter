@@ -1,0 +1,10 @@
+.python-version
+venv/
+.env
+src/config/youtube_secrets.json
+output/
+data/*
+!data/previous_videos.json
+*.mp4
+!src/assets/animations/subscribe01-ja.mp4
+*.wav

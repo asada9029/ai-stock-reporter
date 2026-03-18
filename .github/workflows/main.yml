@@ -1,0 +1,112 @@
+name: AI Stock Reporter Pipeline
+
+on:
+  schedule:
+    # Github Actionsのスケジュールは、中途半端な時間を指定すると、時間通りに実行されやすいらしい
+    # 朝動画: 日本時間 5:47 (UTC 20:47 前日)
+    - cron: '47 20 * * *'
+    # 夜動画: 日本時間 15:47 (UTC 06:47)
+    - cron: '47 6 * * *'
+  workflow_dispatch:
+    inputs:
+      video_type:
+        description: 'Video type to generate'
+        required: true
+        default: 'morning_video'
+        type: choice
+        options:
+          - morning_video
+          - evening_video
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240 # 4時間
+
+    services:
+      voicevox:
+        image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+        ports:
+          - 50021:50021
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.2'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
+          pip install -r requirements.txt
+
+      - name: Restore YouTube credentials
+        run: |
+          # TOKEN_JSON_BASE64 から src/config/token.json を復元
+          mkdir -p src/config
+          echo "${{ secrets.TOKEN_JSON_BASE64 }}" | base64 -d > src/config/token.json
+          
+          # GCP_CLIENT_SECRETS から src/config/youtube_secrets.json を復元
+          echo '${{ secrets.GCP_CLIENT_SECRETS }}' > src/config/youtube_secrets.json
+
+      - name: Wait for VOICEVOX to be ready
+        run: |
+          until curl -s http://localhost:50021/docs > /dev/null; do
+            echo "Waiting for VOICEVOX engine..."
+            sleep 5
+          done
+          echo "VOICEVOX is ready!"
+
+      - name: Determine Video Type
+        id: video-type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.video_type }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "47 20 * * *" ]; then
+            echo "type=morning_video" >> $GITHUB_OUTPUT
+          else
+            echo "type=evening_video" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Pipeline and Upload
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
+          DEBUG: "False"
+          TZ: 'Asia/Tokyo'
+        run: |
+          python main.py --type ${{ steps.video-type.outputs.type }}
+
+      # 一時停止: 動画をartifactに保存しない（再開時は if を削除）
+      - name: Archive production artifacts
+        if: false
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-video-${{ steps.video-type.outputs.type }}
+          path: output/final_video_${{ steps.video-type.outputs.type }}.mp4
+          retention-days: 1
+
+      - name: Commit and Push metadata changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          # 変更がある場合のみコミット
+          git add data/previous_videos.json logs/thumbnail_history.json
+          if [ -n "$(git status --porcelain data/previous_videos.json logs/thumbnail_history.json)" ]; then
+            git stash
+            git pull --rebase origin ${{ github.ref_name }}
+            git stash pop || echo "No stash to pop"
+            git add data/previous_videos.json logs/thumbnail_history.json
+            git commit -m "Update metadata (videos and thumbnails) [skip ci]"
+            git push
+          else
+            echo "No changes to metadata files"
+          fi

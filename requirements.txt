@@ -1,0 +1,37 @@
+# AI/LLM
+google-genai==1.60.0
+
+# データ取得
+requests==2.32.5
+feedparser==6.0.12
+yfinance==0.2.66
+beautifulsoup4==4.14.2
+selenium==4.39.0
+webdriver-manager==4.0.2
+lxml==6.0.2
+
+# 音声処理
+pydub==0.25.1
+
+# 動画処理
+moviepy==2.2.1
+pillow==11.3.0
+
+# YouTube API
+google-api-python-client==2.188.0
+google-auth-oauthlib==1.2.4
+google-auth-httplib2==0.3.0
+
+# ユーティリティ
+python-dotenv==1.2.1
+schedule==1.2.2
+
+# グラフ生成
+matplotlib==3.10.8
+pandas==3.0.0
+pandas-market-calendars==5.3.0
+
+# 開発用
+pytest==9.0.1
+black==25.11.0
+flake8==7.3.0

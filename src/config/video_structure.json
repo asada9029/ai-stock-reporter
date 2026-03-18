@@ -1,0 +1,134 @@
+{
+    "morning_video": {
+      "video_type": "morning_video",
+      "total_duration": 480,
+      "sections": [
+        {
+          "name": "opening",
+          "duration": 20,
+          "content": {
+            "title": "本日のトピック",
+            "description": "朝の挨拶「おはようございます！」からスタート。今日の日付と本日の動画で扱う重要トピックの概要を簡潔に伝えます。"
+          }
+        },
+        {
+          "name": "us_market_summary",
+          "duration": 90,
+          "content": {
+            "title": "米国市場指数",
+            "description": "主要3指数（S&P500, ナスダック, ダウ）の結果と、上昇・下落の具体的な理由（FRB発言、経済指標など）の分析。"
+          }
+        },
+        {
+          "name": "us_news_highlights",
+          "duration": 120,
+          "content": {
+            "title": "米国注目ニュース",
+            "description": "米国関連の注目ニュースを深掘り。株式市場に与える可能性のある影響を多角的に分析します。"
+          }
+        },
+        {
+          "name": "us_sector_analysis",
+          "duration": 110,
+          "content": {
+            "title": "米国セクター分析",
+            "description": "米国市場のセクター別騰落とその原因分析。なぜそのセクターが動いたのか、背景にある要因を詳しく解説します。"
+          }
+        },
+        {
+          "name": "japan_impact_prediction",
+          "duration": 120,
+          "content": {
+            "title": "日本市場への影響予測",
+            "description": "米国の動きを受けた日本市場への波及効果を詳細に予測。具体的な注目株や為替の影響、今日の取引戦略を提案します。"
+          }
+        },
+        {
+          "name": "closing",
+          "duration": 20,
+          "content": {
+            "title": "まとめ",
+            "description": "動画内容の総括。夜18時の動画への誘導とチャンネル登録の呼びかけ。免責事項を簡潔に伝える。"
+          }
+        }
+      ]
+    },
+    "evening_video": {
+      "video_type": "evening_video",
+      "total_duration": 540,
+      "sections": [
+        {
+          "name": "opening",
+          "duration": 20,
+          "content": {
+            "title": "本日のトピック",
+            "description": "お仕事終わりの視聴者を労う「お疲れ様です」の挨拶からスタート。今日の日付と、本日の動画で扱う重要トピックの概要を簡潔に伝えます。"
+          }
+        },
+        {
+          "name": "market_indices",
+          "duration": 70,
+          "content": {
+            "title": "主要市場指数",
+            "description": "日米市場の終値、前日比、変動の原因分析。ドル円相場の動きとその影響についても触れます。"
+          }
+        },
+        {
+          "name": "news_highlights",
+          "duration": 80,
+          "content": {
+            "title": "注目ニュース",
+            "description": "重要なニュースを厳選し、株式市場に与える可能性のある影響を分析します。"
+          }
+        },
+        {
+          "name": "event_calendar",
+          "duration": 40,
+          "content": {
+            "title": "イベントカレンダー",
+            "description": "主要企業の決算発表スケジュールや重要な経済指標。注目すべき理由を初心者向けに解説します。"
+          }
+        },
+        {
+          "name": "sector_overview",
+          "duration": 90,
+          "content": {
+            "title": "セクター概要",
+            "description": "東証33業種の騰落ランキング。上昇・下落が顕著だったセクターを特定し、市場の熱量を分析します。"
+          }
+        },
+        {
+          "name": "sector_attention",
+          "duration": 100,
+          "content": {
+            "title": "注目セクター",
+            "description": "最も注目すべきセクターの個別銘柄IRやニュース。なぜその銘柄が動いたのか、背景を解説します。"
+          }
+        },
+        {
+          "name": "prev_ir_tracking",
+          "duration": 60,
+          "content": {
+            "title": "前回紹介銘柄の追跡",
+            "description": "前回動画で紹介した銘柄の「その後」を追跡し、継続的な視点を提供します。"
+          }
+        },
+        {
+          "name": "tomorrow_strategy",
+          "duration": 60,
+          "content": {
+            "title": "今夜の米国市場と明日の展望",
+            "description": "米国の重要イベントが明日の日本のどの業種に影響するか、今日の勢いが明日も続くのかを具体的に予測します。"
+          }
+        },
+        {
+          "name": "closing",
+          "duration": 20,
+          "content": {
+            "title": "まとめ",
+            "description": "本日の総括。明日の朝動画への誘導とチャンネル登録の呼びかけ。免責事項を簡潔に伝える。"
+          }
+        }
+      ]
+    }
+}
