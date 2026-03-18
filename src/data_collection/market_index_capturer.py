@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
@@ -80,6 +81,45 @@ class MarketIndexCapturer:
         """WebDriverのインスタンスを返す"""
         return webdriver.Chrome(service=self.service, options=self.chrome_options)
 
+    def _dump_failure_artifacts(self, market_key: str, driver, note: str) -> None:
+        """
+        失敗時の調査用に、スクショとHTMLを保存する（ベストエフォート）。
+        GitHub Actions の headless では DOM が変わる/ブロックされることがあるため、原因切り分け用。
+        """
+        try:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base = os.path.join(self.output_dir, f"failure_{market_key.lower()}_{ts}")
+
+            try:
+                driver.save_screenshot(base + ".png")
+            except Exception:
+                pass
+
+            try:
+                with open(base + ".html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source or "")
+            except Exception:
+                pass
+
+            try:
+                cur_url = ""
+                title = ""
+                try:
+                    cur_url = driver.current_url
+                    title = driver.title
+                except Exception:
+                    pass
+                with open(base + ".txt", "w", encoding="utf-8") as f:
+                    f.write(note + "\n")
+                    f.write(f"url={cur_url}\n")
+                    f.write(f"title={title}\n")
+            except Exception:
+                pass
+
+            print(f"🧾 失敗調査用ファイルを保存しました: {base}.[png|html|txt]")
+        except Exception:
+            pass
+
     def _get_yfinance_data(self, ticker: str) -> Optional[Dict]:
         """
         yfinanceから株価データを取得するヘルパーメソッド
@@ -149,6 +189,23 @@ class MarketIndexCapturer:
             else:
                 return None
         
+        # Actions 環境では Yahoo 側の同意画面/ブロック等で Selenium が失敗することがあるため、
+        # 数値は yfinance でのフォールバックを用意しておく。
+        def _fallback_yfinance(note: str) -> Optional[Dict]:
+            yfinance_data = self._get_yfinance_data(market_info["ticker"])
+            if not yfinance_data:
+                return None
+            print(f"    ↪ yfinance フォールバックで数値取得: {market_info['ticker']} ({note})")
+            return {
+                "market": market_key,
+                "name": market_info["name"],
+                "chart_image_path": None,  # Selenium が落ちた場合はチャートなしで継続
+                "current_price": str(yfinance_data["current"]),
+                "change": str(yfinance_data["change"]),
+                "change_percent": str(yfinance_data["change_percent"]),
+                "collected_at": yfinance_data["timestamp"],
+            }
+
         # 市場ごとのセレクタを取得
         selectors = market_info["selectors"]
         current_value_area_selector = selectors["value_area"]
@@ -160,7 +217,8 @@ class MarketIndexCapturer:
         try:
             print(f"🌐 {market_info['name']} チャートページにアクセス中: {market_info['url']}")
             driver.get(market_info['url'])
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, chart_selector)))
+            # Actions では表示が遅い/別DOMになることがあるので少し長めに待つ
+            WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.CSS_SELECTOR, chart_selector)))
             
             # チャートの描画完了を待つために少し待機
             time.sleep(3)
@@ -209,9 +267,34 @@ class MarketIndexCapturer:
                 "collected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
 
+        except TimeoutException as e:
+            note = (
+                "TimeoutException while waiting for selector.\n"
+                f"market={market_key} selector={chart_selector}\n"
+                f"exception={repr(e)}"
+            )
+            print(f"❌ {market_info['name']} データ取得中にタイムアウト: selector={chart_selector}")
+            self._dump_failure_artifacts(market_key, driver, note)
+            return _fallback_yfinance("timeout") or None
+        except WebDriverException as e:
+            note = (
+                "WebDriverException.\n"
+                f"market={market_key} selector={chart_selector}\n"
+                f"exception={repr(e)}"
+            )
+            print(f"❌ {market_info['name']} WebDriverエラー: {repr(e)}")
+            self._dump_failure_artifacts(market_key, driver, note)
+            return _fallback_yfinance("webdriver_error") or None
         except Exception as e:
-            print(f"❌ {market_info['name']} データ取得中にエラーが発生しました: {e}")
-            return None
+            note = (
+                "Unhandled exception.\n"
+                f"market={market_key} selector={chart_selector}\n"
+                f"type={type(e)}\n"
+                f"exception={repr(e)}"
+            )
+            print(f"❌ {market_info['name']} データ取得中にエラーが発生しました: {repr(e)}")
+            self._dump_failure_artifacts(market_key, driver, note)
+            return _fallback_yfinance("exception") or None
         finally:
             driver.quit()
 
