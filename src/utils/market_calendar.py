@@ -20,11 +20,11 @@ def is_market_open(video_type: str) -> bool:
     if "morning" in video_type:
         # 米国市場 (NYSE) の判定
         # 朝動画は「前日の米国市場」の結果を報じる。
-        # 実行タイミングがJST朝6:15なので、前日の日付で判定する。
+        # 実行タイミングがJST朝5:00前後なので、前日の日付で判定する。
         nyse = mcal.get_calendar('NYSE')
         
         # 判定対象日: 実行時のJST日付の前日（米国時間での前営業日を確認するため）
-        # 例: JST 2/16(月) 6:15 実行の場合 -> 2/15(日) をチェック -> 休みならスキップ
+        # 例: JST 2/16(月) 5:00 実行の場合 -> 2/15(日) をチェック -> 休みならスキップ
         # 実際には NYSE のカレンダーが祝日・土日を考慮してくれる。
         check_date = now_jst - datetime.timedelta(days=1)
         schedule = nyse.schedule(start_date=check_date.date(), end_date=check_date.date())
@@ -73,7 +73,7 @@ def get_next_market_open(video_type: str) -> datetime.datetime:
         if is_market_open(next_type):
             # その日の投稿時間を設定
             if "morning" in next_type:
-                return next_check_date.replace(hour=8, minute=0, second=0, microsecond=0)
+                return next_check_date.replace(hour=7, minute=0, second=0, microsecond=0)
             else:
                 return next_check_date.replace(hour=18, minute=0, second=0, microsecond=0)
         
