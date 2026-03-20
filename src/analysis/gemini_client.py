@@ -260,14 +260,14 @@ class GeminiClient:
     def search_news(
         self,
         query: str,
-        time_range: str = "24時間以内"
+        time_range: str = "12時間以内"
     ) -> Dict[str, Any]:
         """
         ニュース検索（専用メソッド）
         
         Args:
             query: 検索クエリ
-            time_range: 時間範囲（例: "24時間以内", "今日"）
+            time_range: 時間範囲（例: "12時間以内", "今日"）
         
         Returns:
             Dict: 検索結果

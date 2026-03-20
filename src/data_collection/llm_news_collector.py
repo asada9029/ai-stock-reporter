@@ -32,7 +32,7 @@ class LlmNewsCollector:
         
         try:
             # GeminiClient の search_news メソッドを呼び出す
-            search_results_json = self.gemini_client.search_news(query=query, time_range="24時間以内")
+            search_results_json = self.gemini_client.search_news(query=query, time_range="12時間以内")
 
             if not search_results_json or not search_results_json.get("found_articles"):
                 print(f"    ⚠️ ニュースが見つかりませんでした: '{query}'")
