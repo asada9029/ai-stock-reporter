@@ -157,7 +157,7 @@ class DataAggregator:
             sector_analysis_list = []
             if target_sectors:
                 sector_names_str = ", ".join([s["name"] for s in target_sectors if s["name"]])
-                prompt = f"""米国の株式市場における、以下のセクターの過去24時間の最新ニュースをそれぞれ3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
+                prompt = f"""米国の株式市場における、以下のセクターの過去12時間の最新ニュースをそれぞれ3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
     出力は、セクター名をキーとし、その値はニュースのリスト（各ニュースは辞書形式で "title" と "summary" を含む）としてください。余計な説明や```json```などのマークダウンは不要です。
 
 セクターリスト: [{sector_names_str}]
@@ -308,7 +308,7 @@ class DataAggregator:
                     if all_companies_for_news:
                         print(f"注目企業（全{len(all_companies_for_news)}社）のニュースを一括取得中...")
                         companies_str = ", ".join([f"{c['name']}({c['ticker']})" for c in all_companies_for_news])
-                        news_prompt = f"""以下の企業について、それぞれ過去24時間の最新ニュースを3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
+                        news_prompt = f"""以下の企業について、それぞれ過去12時間の最新ニュースを3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
     出力は、提供されたリストの「証券コード（例: 7203.T）」をそのままキーとし、その値はニュースのリスト（各ニュースは辞書形式で "title" と "summary" を含む）としてください。
     銘柄名や余計な文字をキーに含めないでください。
     余計な説明や```json```などのマークダウンは不要です。
