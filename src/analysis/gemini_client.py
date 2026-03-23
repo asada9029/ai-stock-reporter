@@ -6,6 +6,7 @@ import time
 import json
 import re
 from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta, timezone
 
 
 load_dotenv()
@@ -273,11 +274,26 @@ class GeminiClient:
             Dict: 検索結果
         """
         
+        # JST（UTC+9）での現在時刻と対象期間を明示して、古い記事が混ざるのを抑える
+        jst = timezone(timedelta(hours=9))
+        now_jst = datetime.now(jst)
+        # time_range は "12時間以内" などの想定。フォーマットが崩れたら 12時間扱い。
+        hours = 12
+        m = re.search(r'(\d+)\s*時間', time_range)
+        if m:
+            hours = int(m.group(1))
+        start_jst = now_jst - timedelta(hours=hours)
+
+        now_str = now_jst.strftime("%Y-%m-%d %H:%M")
+        start_str = start_jst.strftime("%Y-%m-%d %H:%M")
+
         prompt = f"""
 以下の条件でニュースを検索し、JSON形式で返してください。
 
 検索クエリ: {query}
 時間範囲: {time_range}
+現在時刻（JST）: {now_str}
+対象開始（JST）: {start_str}
 
 出力形式:
 {{
@@ -296,6 +312,8 @@ class GeminiClient:
 }}
 
 重要な情報のみを抽出し、信頼性の高い情報源を優先してください。
+【超重要】found_articles の各要素の "date" は必ず「対象開始（JST）〜現在時刻（JST）」の範囲に入っているものだけを返してください。
+範囲外の記事が混ざる場合は、混ざらないように捨ててください（古い記事を返さないでください）。
 """
         
         return self.generate_json_with_search(prompt)

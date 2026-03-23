@@ -1,6 +1,6 @@
 import os
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import sys
 # プロジェクトのルートディレクトリをパスに追加
@@ -17,6 +17,46 @@ class LlmNewsCollector:
     def __init__(self):
         self.gemini_client = GeminiClient() # GeminiClient のインスタンスを保持
 
+    def _parse_news_datetime_jst(self, date_str: str) -> Optional[datetime]:
+        """
+        Geminiが返す date 文字列をできるだけJSTのdatetimeに変換する。
+        パースできない場合は None。
+        """
+        if not date_str:
+            return None
+        s = str(date_str).strip()
+
+        # ISOっぽいもの
+        try:
+            s2 = s.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(s2)
+            jst = timezone(timedelta(hours=9))
+            if dt.tzinfo is None:
+                # tzなしはJST扱い
+                return dt
+            return dt.astimezone(jst).replace(tzinfo=None)
+        except Exception:
+            pass
+
+        # よくあるフォーマット
+        for fmt in (
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M",
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%b %d, %Y",
+            "%B %d, %Y",
+            "%Y.%m.%d",
+        ):
+            try:
+                return datetime.strptime(s, fmt)
+            except Exception:
+                continue
+
+        return None
+
     def search_news(self, query: str, num_results: int = 5) -> List[Dict]:
         """
         指定されたクエリでWeb検索を行い、ニュース記事を収集します。
@@ -32,17 +72,34 @@ class LlmNewsCollector:
         
         try:
             # GeminiClient の search_news メソッドを呼び出す
-            search_results_json = self.gemini_client.search_news(query=query, time_range="12時間以内")
+            time_range = "12時間以内"
+            search_results_json = self.gemini_client.search_news(query=query, time_range=time_range)
 
             if not search_results_json or not search_results_json.get("found_articles"):
                 print(f"    ⚠️ ニュースが見つかりませんでした: '{query}'")
                 return []
 
-            # 検索結果から必要な情報を抽出
+            # 検索結果から必要な情報を抽出（念のため日時フィルタで古い記事を落とす）
+            # time_range は "12時間以内" の想定
+            hours = 12
+            import re as _re
+            m = _re.search(r"(\d+)\s*時間", time_range)
+            if m:
+                hours = int(m.group(1))
+            jst = timezone(timedelta(hours=9))
+            cutoff_jst = (datetime.now(jst) - timedelta(hours=hours)).replace(tzinfo=None)
+
             news_items = []
             for i, article in enumerate(search_results_json["found_articles"]):
                 if i >= num_results:
                     break
+
+                dt = self._parse_news_datetime_jst(article.get("date", ""))
+                # 日付が取れない/パースできない場合は、古い混入を避けるため除外
+                if not dt:
+                    continue
+                if dt < cutoff_jst:
+                    continue
                 
                 news_item = {
                     "title": article.get("title", "タイトルなし"),
