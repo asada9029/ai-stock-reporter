@@ -65,6 +65,9 @@ class MarketIndexCapturer:
     def __init__(self, output_dir: str = "output/market_charts"):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
+        # GitHub Actions の headless 実行はローカルより遅いことがあるため、待機時間は長めを既定値にする
+        self.page_wait_timeout = int(os.getenv("MARKET_CHART_WAIT_TIMEOUT_SEC", "45"))
+        self.chart_render_wait_sec = int(os.getenv("MARKET_CHART_RENDER_WAIT_SEC", "4"))
 
         # Selenium WebDriverのオプション設定
         self.chrome_options = Options()
@@ -218,10 +221,12 @@ class MarketIndexCapturer:
             print(f"🌐 {market_info['name']} チャートページにアクセス中: {market_info['url']}")
             driver.get(market_info['url'])
             # Actions では表示が遅い/別DOMになることがあるので少し長めに待つ
-            WebDriverWait(driver, 25).until(EC.presence_of_element_located((By.CSS_SELECTOR, chart_selector)))
+            WebDriverWait(driver, self.page_wait_timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, chart_selector))
+            )
             
             # チャートの描画完了を待つために少し待機
-            time.sleep(3)
+            time.sleep(self.chart_render_wait_sec)
 
             # チャート部分のスクリーンショット
             chart_elem = driver.find_element(By.CSS_SELECTOR, chart_selector)

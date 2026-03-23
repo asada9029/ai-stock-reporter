@@ -22,6 +22,9 @@ class StockChartCapturer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         self.driver = None
+        # CI/headless では要素出現が遅いケースがあるため、待機時間を環境変数で調整可能にする
+        self.chart_wait_timeout = int(os.getenv("STOCK_CHART_WAIT_TIMEOUT_SEC", "35"))
+        self.chart_render_wait_sec = int(os.getenv("STOCK_CHART_RENDER_WAIT_SEC", "4"))
 
     def _initialize_driver(self):
         """
@@ -66,8 +69,8 @@ class StockChartCapturer:
             print(f"--- 取得開始: {stock_name} ({ticker}) ---")
             self.driver.get(url)
             
-            # 要素の読み込みを待つ（最大20秒）
-            wait = WebDriverWait(self.driver, 20)
+            # 要素の読み込みを待つ（既定値35秒）
+            wait = WebDriverWait(self.driver, self.chart_wait_timeout)
             
             # ユーザーが確認したクラス名を含むセレクタを最優先にする
             selectors = [
@@ -93,7 +96,7 @@ class StockChartCapturer:
                 chart_element = self.driver.find_element(By.TAG_NAME, "body")
 
             # 描画バッファ（これがないとグラフの中身が空になることがあります）
-            time.sleep(3)
+            time.sleep(self.chart_render_wait_sec)
 
             # チャートを画面中央にスクロール（キャプチャミス防止）
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chart_element)
