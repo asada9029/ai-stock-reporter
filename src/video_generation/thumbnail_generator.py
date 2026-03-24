@@ -161,6 +161,184 @@ class ThumbnailGenerator:
         
         # メインテキスト
         draw.text((x, y), text, font=font, fill=fill_color)
+
+    def _parse_percent_value(self, value) -> Optional[float]:
+        """'1.23%' や '+1.23' を float に変換。失敗時は None。"""
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        if not isinstance(value, str):
+            return None
+
+        # 文字列中の数値を抽出（例: '+1.23%', ' 1.23 '）
+        import re
+        m = re.search(r'[-+]?\d+(?:\.\d+)?', value.replace(',', ''))
+        if not m:
+            return None
+        try:
+            return float(m.group(0))
+        except ValueError:
+            return None
+
+    def _should_block_nikkei_title(self, analysis_result: Dict) -> bool:
+        """
+        日経平均タイトルをブロックすべきか判定する。
+        ユーザー要望: 日経は増減3.0%以上でない場合は主役にしない。
+        """
+        market_indices = analysis_result.get("market_indices", {}) or {}
+        nikkei = market_indices.get("NIKKEI", {}) or {}
+        nikkei_change_percent = self._parse_percent_value(nikkei.get("change_percent"))
+
+        if nikkei_change_percent is None:
+            # 判定不能時は誤検知を避けるためブロックしない
+            return False
+        return abs(nikkei_change_percent) < 3.0
+
+    def _title_mentions_nikkei_or_historical_peak(self, title: str) -> bool:
+        """日経主役や『歴史的高値』系の誇張ワードが含まれるか判定。"""
+        if not title:
+            return False
+        keywords = [
+            "日経", "日経平均", "歴史的高値", "歴史的最高値", "最高値", "高値更新",
+            "史上最高", "新高値", "年初来高値"
+        ]
+        return any(k in title for k in keywords)
+
+    def _title_mentions_historical_peak(self, title: str) -> bool:
+        """『歴史的高値』系ワードが含まれるか判定。"""
+        if not title:
+            return False
+        keywords = [
+            "歴史的高値", "歴史的最高値", "史上最高", "最高値", "高値更新", "新高値", "年初来高値"
+        ]
+        return any(k in title for k in keywords)
+
+    def _has_historical_peak_evidence(self, analysis_result: Dict, main_news_index: int) -> bool:
+        """
+        タイトルの『高値更新』系表現を許可できる裏取りがあるか判定。
+        根拠は attention_news の title/snippet に高値更新を示す語があること。
+        """
+        attention_news = analysis_result.get("attention_news", []) or []
+        if not attention_news:
+            return False
+
+        evidence_keywords = [
+            "年初来高値", "史上最高値", "過去最高値", "最高値更新", "高値更新",
+            "record high", "all-time high", "new high", "hit a high"
+        ]
+
+        # メインニュースを最優先で確認し、なければ全体を確認
+        check_indices = []
+        if isinstance(main_news_index, int) and 0 <= main_news_index < len(attention_news):
+            check_indices.append(main_news_index)
+        check_indices.extend([i for i in range(len(attention_news)) if i != main_news_index])
+
+        for idx in check_indices:
+            news = attention_news[idx] or {}
+            blob = f"{news.get('title', '')} {news.get('snippet', '')}".lower()
+            if any(k.lower() in blob for k in evidence_keywords):
+                return True
+        return False
+
+    def _fallback_safe_title(self, attention_news: List[Dict]) -> str:
+        """
+        条件違反時の安全なフォールバックタイトルを生成。
+        日経系ニュースを避けて最初のニュースを使う。
+        """
+        ng_words = ["日経", "日経平均", "NIKKEI", "nikkei"]
+        for news in attention_news:
+            t = news.get("title", "")
+            if t and not any(w in t for w in ng_words):
+                return t
+        if attention_news:
+            return attention_news[0].get("title", "本日の株式市場まとめ")
+        return "本日の株式市場まとめ"
+
+    def _get_max_index_move_percent(self, analysis_result: Dict) -> float:
+        """主要指数の絶対変動率の最大値を返す。"""
+        market_indices = analysis_result.get("market_indices", {}) or {}
+        max_abs = 0.0
+        for data in market_indices.values():
+            pct = self._parse_percent_value((data or {}).get("change_percent"))
+            if pct is None:
+                continue
+            max_abs = max(max_abs, abs(pct))
+        return max_abs
+
+    def _has_material_news_signal(self, analysis_result: Dict) -> bool:
+        """
+        中強度ワードの根拠となる材料ニュースがあるか。
+        """
+        attention_news = analysis_result.get("attention_news", []) or []
+        if not attention_news:
+            return False
+        material_keywords = [
+            "決算", "下方修正", "上方修正", "利上げ", "利下げ", "関税", "地政学", "中東", "停戦",
+            "cpi", "fomc", "雇用統計", "日銀", "frb", "米雇用", "ガイダンス", "業績"
+        ]
+        for news in attention_news:
+            blob = f"{news.get('title', '')} {news.get('snippet', '')}".lower()
+            if any(k in blob for k in material_keywords):
+                return True
+        return False
+
+    def _sanitize_title_by_evidence(self, title: str, analysis_result: Dict, main_news_index: int) -> str:
+        """
+        強い表現を根拠に応じて自動で調整する。
+        CTRは保ちつつ、言い過ぎを1段弱める。
+        """
+        if not title:
+            return title
+
+        max_move = self._get_max_index_move_percent(analysis_result)
+        has_material = self._has_material_news_signal(analysis_result)
+        has_peak_evidence = self._has_historical_peak_evidence(analysis_result, main_news_index)
+
+        # A級: 強い表現（根拠が弱ければB級へ）
+        strong_to_mid = {
+            "歴史的高値": "高値圏",
+            "歴史的最高値": "高値圏",
+            "史上最高": "高値圏",
+            "最高値": "高値圏",
+            "高値更新": "上昇基調",
+            "新高値": "上昇基調",
+            "年初来高値": "上昇基調",
+            "暴落": "急落警戒",
+            "急騰": "急伸",
+            "爆騰": "急伸",
+            "爆上げ": "上昇"
+        }
+
+        # B級: 中強度（根拠が弱ければC級へ）
+        mid_to_safe = {
+            "波乱": "警戒",
+            "異変": "変化",
+            "急変": "変化",
+            "急落警戒": "下振れ警戒",
+            "急伸": "上昇",
+            "上昇基調": "注目"
+        }
+
+        adjusted = title
+
+        # 歴史的高値系は裏取り必須
+        if not has_peak_evidence:
+            for k, v in strong_to_mid.items():
+                if k in ["歴史的高値", "歴史的最高値", "史上最高", "最高値", "高値更新", "新高値", "年初来高値"]:
+                    adjusted = adjusted.replace(k, v)
+
+        # 変動率が小さいのに「暴落/急騰/爆上げ」は抑制
+        if max_move < 2.0:
+            for k in ["暴落", "急騰", "爆騰", "爆上げ"]:
+                adjusted = adjusted.replace(k, strong_to_mid[k])
+
+        # 材料ニュースが薄い日は中強度ワードも1段弱める
+        if not has_material:
+            for k, v in mid_to_safe.items():
+                adjusted = adjusted.replace(k, v)
+
+        return adjusted
     
     def create_thumbnail_from_analysis(
         self,
@@ -218,11 +396,11 @@ class ThumbnailGenerator:
             タイトルに採用するメインニュースは、以下の「異常値」を基準に選定してください：
             1. **【特級：歴史的節目】**: 年初来高値/安値の更新、数年ぶりの水準、歴史的最高値など。
             2. **【A級：異常な変動】**: 
-               - **株価指数（日経・ナスダック等）**: 2.0%以上の変動
+               - **株価指数（日経・ナスダック等）**: 3.0%以上の変動
                - **個別銘柄**: 5.0%以上の変動（決算、ストップ高/安、材料視）
                - **為替（ドル円）**: 1.5円以上の急騰/急落
             3. **【B級：サプライズ指標】**: 予想を大きく裏切るCPI、雇用統計、金利政策決定。
-            ※重要：1%未満の動きしかない「日経平均」は主役にせず、上記2%〜5%以上動いているトピックを最優先で選ぶこと。
+            ※重要：日経平均は増減が3.0%未満なら主役にしないこと。上記3%〜5%以上動いているトピックを最優先で選ぶこと。
 
             【リライトの指針：サムネイル用タイトル（title）】
             1. **主語の明示（必須）**:
@@ -320,6 +498,32 @@ class ThumbnailGenerator:
                 main_news_index = 0
                 highlight_indices = []
             emotion = 'happy'
+
+        # 生成結果の最終バリデーション:
+        # 「日経を主役にしない条件」をコード側で強制し、LLM逸脱を防ぐ
+        if self._should_block_nikkei_title(analysis_result) and self._title_mentions_nikkei_or_historical_peak(title):
+            print("⚠️ 日経平均の変動が3.0%未満のため、日経/歴史的高値系タイトルを差し替えます。")
+            title = self._fallback_safe_title(attention_news)
+            main_news_index = 0
+            for idx, news in enumerate(attention_news):
+                if news.get("title", "") == title:
+                    main_news_index = idx
+                    break
+            emotion = 'normal'
+
+        # 「歴史的高値」系ワードは、ニュース側で高値更新の裏取りがある場合のみ許可
+        if self._title_mentions_historical_peak(title) and not self._has_historical_peak_evidence(analysis_result, main_news_index):
+            print("⚠️ 高値更新の裏取りがないため、歴史的高値系タイトルを差し替えます。")
+            title = self._fallback_safe_title(attention_news)
+            main_news_index = 0
+            for idx, news in enumerate(attention_news):
+                if news.get("title", "") == title:
+                    main_news_index = idx
+                    break
+            emotion = 'normal'
+
+        # 強い表現を、根拠に合わせて1段階調整（CTRと正確性の両立）
+        title = self._sanitize_title_by_evidence(title, analysis_result, main_news_index)
 
         # タイトル文字数制限（最終確認）
         if len(title) > 23:
