@@ -4,6 +4,7 @@ YouTubeサムネイルを自動生成
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -172,7 +173,6 @@ class ThumbnailGenerator:
             return None
 
         # 文字列中の数値を抽出（例: '+1.23%', ' 1.23 '）
-        import re
         m = re.search(r'[-+]?\d+(?:\.\d+)?', value.replace(',', ''))
         if not m:
             return None
@@ -181,26 +181,43 @@ class ThumbnailGenerator:
         except ValueError:
             return None
 
-    def _should_block_nikkei_title(self, analysis_result: Dict) -> bool:
-        """
-        日経平均タイトルをブロックすべきか判定する。
-        ユーザー要望: 日経は増減3.0%以上でない場合は主役にしない。
-        """
+    def _nikkei_abs_change_percent(self, analysis_result: Dict) -> Optional[float]:
+        """日経の前日比％（絶対値用の元値）。取得・パースできなければ None。"""
         market_indices = analysis_result.get("market_indices", {}) or {}
         nikkei = market_indices.get("NIKKEI", {}) or {}
-        nikkei_change_percent = self._parse_percent_value(nikkei.get("change_percent"))
+        return self._parse_percent_value(nikkei.get("change_percent"))
 
-        if nikkei_change_percent is None:
-            # 判定不能時は誤検知を避けるためブロックしない
+    def _nikkei_hero_allowed(self, analysis_result: Dict) -> bool:
+        """
+        日経をサムネ主役にしてよいのは、取得データで変動率の絶対値が3.0%以上のときのみ。
+        数値が不明なときは出さない（誤表示より安全側）。
+        """
+        p = self._nikkei_abs_change_percent(analysis_result)
+        return p is not None and abs(p) >= 3.0
+
+    def _title_references_nikkei_market(self, title: str) -> bool:
+        """
+        日経・日本株指数の主役表現が含まれるか（表記ゆれ・指数の『5.2万』等も含む）。
+        """
+        if not title:
             return False
-        return abs(nikkei_change_percent) < 3.0
+        if re.search(r"日経|日経平均|ニッケイ|平均株価", title):
+            return True
+        # 指数レベルの「4.0〜5.9万」表記（月収の「月30万」は除外）
+        if re.search(r"(?<!月)(?<![年月])\d+\.\d+万", title):
+            return True
+        if re.search(r"(?<!月)(?<![年月])[45]\d*\.?\d*万円?台", title):
+            return True
+        return False
 
     def _title_mentions_nikkei_or_historical_peak(self, title: str) -> bool:
         """日経主役や『歴史的高値』系の誇張ワードが含まれるか判定。"""
         if not title:
             return False
+        if self._title_references_nikkei_market(title):
+            return True
         keywords = [
-            "日経", "日経平均", "歴史的高値", "歴史的最高値", "最高値", "高値更新",
+            "歴史的高値", "歴史的最高値", "最高値", "高値更新",
             "史上最高", "新高値", "年初来高値"
         ]
         return any(k in title for k in keywords)
@@ -241,19 +258,73 @@ class ThumbnailGenerator:
                 return True
         return False
 
-    def _fallback_safe_title(self, attention_news: List[Dict]) -> str:
+    _INCOME_TEMPLATE_RE = re.compile(
+        r"月\s*\d+\s*万|年\s*\d+\s*万|資産\s*\d+\s*倍|稼げる|禁断の術"
+    )
+
+    def _has_income_template(self, text: str) -> bool:
+        if not text:
+            return False
+        return bool(self._INCOME_TEMPLATE_RE.search(text))
+
+    def _fallback_safe_title(
+        self,
+        attention_news: List[Dict],
+        *,
+        block_nikkei: bool = True,
+        block_income_template: bool = True,
+    ) -> str:
         """
         条件違反時の安全なフォールバックタイトルを生成。
-        日経系ニュースを避けて最初のニュースを使う。
+        日経系・月○万定型を避けてニュース見出しを使う。
         """
-        ng_words = ["日経", "日経平均", "NIKKEI", "nikkei"]
+        ng_words = ["日経", "日経平均", "NIKKEI", "nikkei", "ニッケイ", "平均株価"]
         for news in attention_news:
             t = news.get("title", "")
-            if t and not any(w in t for w in ng_words):
-                return t
-        if attention_news:
-            return attention_news[0].get("title", "本日の株式市場まとめ")
+            if not t:
+                continue
+            if block_nikkei and any(w in t for w in ng_words):
+                continue
+            if block_income_template and self._has_income_template(t):
+                continue
+            return t
+        # 全日経・全日定型などで候補が無いときは指数を出さない安全側へ
         return "本日の株式市場まとめ"
+
+    def _format_market_facts_for_prompt(self, analysis_result: Dict) -> str:
+        """LLMに渡す確定市場数値（日経の可否判断用）。"""
+        market_indices = analysis_result.get("market_indices", {}) or {}
+        lines = []
+        nikkei = market_indices.get("NIKKEI")
+        if nikkei:
+            lines.append(
+                f"- 日経平均: 値 {nikkei.get('current_price', '-')} "
+                f"前日比 {nikkei.get('change', '-')} ({nikkei.get('change_percent', '-')})"
+            )
+        sp = market_indices.get("SP500")
+        if sp:
+            lines.append(
+                f"- S&P500: 値 {sp.get('current_price', '-')} "
+                f"前日比 {sp.get('change', '-')} ({sp.get('change_percent', '-')})"
+            )
+        if not lines:
+            return "（市場指数データなし。日経・指数を主役にしないこと。）"
+        p = self._nikkei_abs_change_percent(analysis_result)
+        if p is None:
+            lines.append(
+                "- 【厳守】日経の変動率がここで確認できないため、タイトルに日経・"
+                "日本株指数の水準（〇〇万など）を出さないこと。"
+            )
+        elif abs(p) < 3.0:
+            lines.append(
+                f"- 【厳守】日経の変動率は絶対値 {abs(p):.2f}% ＜ 3.0% のため、"
+                "タイトルに日経・日本株指数を主役として出さないこと。"
+            )
+        else:
+            lines.append(
+                f"- 日経の変動率は絶対値 {abs(p):.2f}% なので、日経を主役にしてよい。"
+            )
+        return "\n".join(lines)
 
     def _get_max_index_move_percent(self, analysis_result: Dict) -> float:
         """主要指数の絶対変動率の最大値を返す。"""
@@ -381,10 +452,15 @@ class ThumbnailGenerator:
             news_text = ""
             for i, n in enumerate(attention_news):
                 news_text += f"{i+1}. {n.get('title', '')}\n"
+
+            market_facts = self._format_market_facts_for_prompt(analysis_result)
             
             prompt = f"""
-            以下のニュースリストから、YouTubeのサムネイルとして「今すぐクリックしなければ損をする」かつ「これを見れば稼げる」と思わせる、
-            最高にインパクトのあるタイトル（1つ）と、概要欄用のハイライト（3つ）を生成してください。
+            以下のニュースリストから、YouTubeのサムネイルとして「今すぐクリックしなければ損をする」ほどのインパクトと、
+            「この材料は見逃せない」と思わせる最高のタイトル（1つ）と、概要欄用のハイライト（3つ）を生成してください。
+
+            【確定市場データ（タイトルの数値・主役判断はこれに従う。ニュース記事と矛盾したら必ずこちらを優先）】
+            {market_facts}
 
             【ニュースリスト】
             {news_text}
@@ -412,9 +488,9 @@ class ThumbnailGenerator:
                - ニュース記事（スニペット）内の数値と、市場データ（指数の終値等）に乖離がある場合は、**必ず最新の市場データ数値を優先**してください。
                - 特に日経平均の騰落幅などは、古いニュース記事の数字を拾わず、現在の正確な数値を反映させてください。
 
-            3. **「巨額市場」×「個人利益」の黄金法則**:
-               - ブラウジング機能を攻略するため、「〇〇兆円の市場変化」や「〇〇億円の投資」といった巨大な数字と、「月30万稼ぐ」「資産10倍」といった視聴者の具体的なメリットを組み合わせてください。
-               - 例：「【テスラ6000億】個人が1000万稼ぐ禁断の術」
+            3. **訴求の多様化（テンプレ禁止）**:
+               - 「月○万」「年○万」「資産○倍」「稼げる」「禁断の術」など、**定型的な金額訴求は使わないこと**（クリック率のために似た構文を繰り返さない）。
+               - 代わりに、ニュース固有の固有名詞・出来事・対立構造（誰が・何を・市場にどう効くか）を短く尖らせる。
 
             4. **事実（異常値）に基づく選定（最優先）**:
                - ニュースリストの中で、「実際に大きく動いた数値」や「今日初めて出た重大な事実」を主役にしてください。
@@ -439,6 +515,7 @@ class ThumbnailGenerator:
             【リライトの指針：概要欄用ハイライト（highlights）】
                - タイトル以外の重要ニュースから3つ選定。各17文字以内。
                - 「自分の資産にどう影響するか」を投資家目線で鋭く記述。
+               - 「月○万」「年○万」「資産○倍」などの定型はハイライトでも使わないこと。
 
             【キャラクターの感情（emotion）】
                - タイトルの内容（ポジティブなら happy/excited, 危機なら surprised/sad等）に合わせ、視聴者の共感を得やすい感情を選択。
@@ -458,7 +535,6 @@ class ThumbnailGenerator:
             res = client.generate_content(prompt)
             # JSON抽出
             import json
-            import re
             m = re.search(r'\{.*\}', res, re.DOTALL)
             if m:
                 data = json.loads(m.group(0))
@@ -501,9 +577,9 @@ class ThumbnailGenerator:
 
         # 生成結果の最終バリデーション:
         # 「日経を主役にしない条件」をコード側で強制し、LLM逸脱を防ぐ
-        if self._should_block_nikkei_title(analysis_result) and self._title_mentions_nikkei_or_historical_peak(title):
-            print("⚠️ 日経平均の変動が3.0%未満のため、日経/歴史的高値系タイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news)
+        if not self._nikkei_hero_allowed(analysis_result) and self._title_references_nikkei_market(title):
+            print("⚠️ 日経の変動が3.0%未満または未取得のため、日経・指数主役のタイトルを差し替えます。")
+            title = self._fallback_safe_title(attention_news, block_nikkei=True, block_income_template=True)
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -514,7 +590,18 @@ class ThumbnailGenerator:
         # 「歴史的高値」系ワードは、ニュース側で高値更新の裏取りがある場合のみ許可
         if self._title_mentions_historical_peak(title) and not self._has_historical_peak_evidence(analysis_result, main_news_index):
             print("⚠️ 高値更新の裏取りがないため、歴史的高値系タイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news)
+            title = self._fallback_safe_title(attention_news, block_nikkei=not self._nikkei_hero_allowed(analysis_result), block_income_template=True)
+            main_news_index = 0
+            for idx, news in enumerate(attention_news):
+                if news.get("title", "") == title:
+                    main_news_index = idx
+                    break
+            emotion = 'normal'
+
+        # 「月○万」等の定型が残った場合は差し替え
+        if self._has_income_template(title):
+            print("⚠️ 月○万などの定型表現のため、タイトルを差し替えます。")
+            title = self._fallback_safe_title(attention_news, block_nikkei=not self._nikkei_hero_allowed(analysis_result), block_income_template=True)
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -525,9 +612,36 @@ class ThumbnailGenerator:
         # 強い表現を、根拠に合わせて1段階調整（CTRと正確性の両立）
         title = self._sanitize_title_by_evidence(title, analysis_result, main_news_index)
 
+        # サニタイズ後に日経主役が復活しないよう再チェック
+        if not self._nikkei_hero_allowed(analysis_result) and self._title_references_nikkei_market(title):
+            print("⚠️ 調整後も日経主役が検出されたため、タイトルを差し替えます。")
+            title = self._fallback_safe_title(attention_news, block_nikkei=True, block_income_template=True)
+            main_news_index = 0
+            for idx, news in enumerate(attention_news):
+                if news.get("title", "") == title:
+                    main_news_index = idx
+                    break
+            emotion = 'normal'
+
         # タイトル文字数制限（最終確認）
         if len(title) > 23:
             title = title[:22] + "…"
+
+        # ハイライトの月○万定型をニュース見出しへ差し替え
+        hi = highlight_indices if isinstance(highlight_indices, list) else []
+        fixed_highlights: List[str] = []
+        for i, h in enumerate(highlights):
+            if self._has_income_template(h):
+                idx = hi[i] if i < len(hi) and isinstance(hi[i], int) else None
+                if idx is not None and 0 <= idx < len(attention_news):
+                    fixed_highlights.append(
+                        attention_news[idx].get("title", "最新の市場動向をチェック")
+                    )
+                else:
+                    fixed_highlights.append("最新の市場動向をチェック")
+            else:
+                fixed_highlights.append(h)
+        highlights = fixed_highlights
             
         # ハイライト文字数制限（最終確認）
         highlights = [h[:16] + "…" if len(h) > 17 else h for h in highlights]
@@ -641,7 +755,6 @@ class ThumbnailGenerator:
         max_chars_per_line = 7
         
         # 【】で囲まれた部分を抽出して色を変える準備
-        import re
         accent_match = re.search(r'【(.*?)】', title)
         accent_text = accent_match.group(1) if accent_match else None
         
