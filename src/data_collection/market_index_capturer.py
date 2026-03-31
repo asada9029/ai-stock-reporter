@@ -66,8 +66,8 @@ class MarketIndexCapturer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         # GitHub Actions の headless 実行はローカルより遅いことがあるため、待機時間は長めを既定値にする
-        self.page_wait_timeout = int(os.getenv("MARKET_CHART_WAIT_TIMEOUT_SEC", "45"))
-        self.chart_render_wait_sec = int(os.getenv("MARKET_CHART_RENDER_WAIT_SEC", "4"))
+        self.page_wait_timeout = int(os.getenv("MARKET_CHART_WAIT_TIMEOUT_SEC", "90"))
+        self.chart_render_wait_sec = int(os.getenv("MARKET_CHART_RENDER_WAIT_SEC", "10"))
 
         # Selenium WebDriverのオプション設定
         self.chrome_options = Options()

@@ -487,6 +487,7 @@ class ThumbnailGenerator:
             2. **数値の正確性と確定値の優先（最重要）**:
                - ニュース記事（スニペット）内の数値と、市場データ（指数の終値等）に乖離がある場合は、**必ず最新の市場データ数値を優先**してください。
                - 特に日経平均の騰落幅などは、古いニュース記事の数字を拾わず、現在の正確な数値を反映させてください。
+               - **ただし、重要なニュースであれば具体的な数値がなくても構いません。** 数値を入れることよりも、ニュースの重大さやインパクトを伝えることを優先してください。
 
             3. **訴求の多様化（テンプレ禁止）**:
                - 「月○万」「年○万」「資産○倍」「稼げる」「禁断の術」など、**定型的な金額訴求は使わないこと**（クリック率のために似た構文を繰り返さない）。
@@ -798,16 +799,30 @@ class ThumbnailGenerator:
             )
             
         # --- 2. その後にすべての行の「テキスト」を描画 ---
+        # 元のタイトル（【】あり）をスキャンして、各文字の色を決定する
+        # display_title（【】なし）の各文字に対応する色リストを作成
+        color_list = []
+        is_accent_zone = False
+        for char in title:
+            if char == '【':
+                is_accent_zone = True
+                continue
+            elif char == '】':
+                is_accent_zone = False
+                continue
+            
+            # 【】以外の文字に対して色を割り当て
+            color_list.append(accent_color if is_accent_zone else colors['text_main'])
+
+        char_idx = 0
         for i, line in enumerate(lines[:3]):
             y = title_y + i * 150
             
             # 1文字ずつ描画して色を変える
             current_x = title_x
             for char in line:
-                # この文字がアクセントテキストに含まれるか判定
-                char_color = colors['text_main']
-                if accent_text and char in accent_text:
-                    char_color = accent_color
+                # color_list からこの文字に対応する色を取得
+                char_color = color_list[char_idx] if char_idx < len(color_list) else colors['text_main']
                 
                 self._draw_text_with_shadow(
                     draw, (current_x, y), char,
@@ -817,6 +832,7 @@ class ThumbnailGenerator:
                 # 次の文字の開始位置
                 char_bbox = draw.textbbox((0, 0), char, font=font_title)
                 current_x += char_bbox[2] - char_bbox[0]
+                char_idx += 1
 
         # 保存
         if output_path is None:
