@@ -1,17 +1,11 @@
 {
     "latest": {
-        "video_id": "auto_2026-04-09T17:51:46.545536",
-        "published_at": "2026-04-09T17:51:46.545536",
+        "video_id": "auto_2026-04-10T18:26:32.922694",
+        "published_at": "2026-04-10T18:26:32.922694",
         "ir_stocks": [
             {
                 "name": "住友電気工業",
                 "ticker": "5802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -22,20 +16,44 @@
                 "ir_date": null
             },
             {
-                "name": "日本郵船",
-                "ticker": "9101.T",
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "商船三井",
-                "ticker": "9104.T",
+                "name": "ＡＧＣ",
+                "ticker": "5201.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "川崎汽船",
-                "ticker": "9107.T",
+                "name": "ＴＯＴＯ",
+                "ticker": "5332.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "日本碍子",
+                "ticker": "5333.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ファーストリテイリング",
+                "ticker": "9983.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "セブン＆アイ・ホールディングス",
+                "ticker": "3382.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "イオン",
+                "ticker": "8267.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -52,68 +70,164 @@
                 "ir_date": null
             },
             {
-                "name": "K&Oエナジーグループ",
+                "name": "Ｋ＆Ｏエナジーグループ",
                 "ticker": "1663.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本航空",
-                "ticker": "9201.T",
+                "name": "三菱商事",
+                "ticker": "8058.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ANAホールディングス",
-                "ticker": "9202.T",
+                "name": "三井物産",
+                "ticker": "8031.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "スカイマーク",
-                "ticker": "9204.T",
+                "name": "伊藤忠商事",
+                "ticker": "8001.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "セブン＆アイ・ホールディングス",
-                "ticker": "3382.T",
+                "name": "日本電信電話",
+                "ticker": "9432.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ファーストリテイリング",
-                "ticker": "9983.T",
+                "name": "ＫＤＤＩ",
+                "ticker": "9433.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "イオン",
-                "ticker": "8267.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "三井不動産",
-                "ticker": "8801.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "三菱地所",
-                "ticker": "8802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "住友不動産",
-                "ticker": "8830.T",
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-04-09T17:51:46.545536",
+            "published_at": "2026-04-09T17:51:46.545536",
+            "ir_stocks": [
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱マテリアル",
+                    "ticker": "5711.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本郵船",
+                    "ticker": "9101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "商船三井",
+                    "ticker": "9104.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "川崎汽船",
+                    "ticker": "9107.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "K&Oエナジーグループ",
+                    "ticker": "1663.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本航空",
+                    "ticker": "9201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ANAホールディングス",
+                    "ticker": "9202.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "スカイマーク",
+                    "ticker": "9204.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "セブン＆アイ・ホールディングス",
+                    "ticker": "3382.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ファーストリテイリング",
+                    "ticker": "9983.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "イオン",
+                    "ticker": "8267.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三井不動産",
+                    "ticker": "8801.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱地所",
+                    "ticker": "8802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友不動産",
+                    "ticker": "8830.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-04-08T17:48:41.527898",
             "published_at": "2026-04-08T17:48:41.527898",
