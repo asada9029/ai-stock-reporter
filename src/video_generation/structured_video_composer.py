@@ -311,7 +311,7 @@ def render_scenes_to_video(
                     text_w = main_area_w + 100
                     
                     base_font_size = 54
-                    reduction_per_line = 5
+                    reduction_per_line = 6
                     
                     frame_padding_h = 270  # 今回の数値
                     frame_offset_y = 90   # 今回の数値
