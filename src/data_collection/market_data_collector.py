@@ -77,8 +77,12 @@ class MarketDataCollector:
 
             # 3. 一般ニュースの取得（LLM Web Search）
             print("\n📰 注目ニュース取得中（LLM Web Search）...")
-            attention_news_query = """
-            過去12時間で、米国の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する米国の一般ニュースを10個教えてください。
+            
+            # 月曜日の朝は週末のニュースも含めるように調整
+            time_range_str = "過去72時間" if datetime.now().weekday() == 0 else "過去12時間"
+            
+            attention_news_query = f"""
+            {time_range_str}で、米国の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する米国の一般ニュースを10個教えてください。
             
             【選定基準（重要）】
             - 投資家（株・資産形成層）の「財布に直結する」ニュースを最優先してください。
