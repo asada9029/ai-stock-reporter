@@ -71,8 +71,10 @@ class LlmNewsCollector:
         print(f"🔍 LLM Web Search でニュースを検索中: '{query}'")
         
         try:
+            # 月曜日の朝は週末のニュースも含めるように調整
+            time_range = "72時間以内" if datetime.now().weekday() == 0 else "12時間以内"
+            
             # GeminiClient の search_news メソッドを呼び出す
-            time_range = "12時間以内"
             search_results_json = self.gemini_client.search_news(query=query, time_range=time_range)
 
             if not search_results_json or not search_results_json.get("found_articles"):
@@ -80,7 +82,6 @@ class LlmNewsCollector:
                 return []
 
             # 検索結果から必要な情報を抽出（念のため日時フィルタで古い記事を落とす）
-            # time_range は "12時間以内" の想定
             hours = 12
             import re as _re
             m = _re.search(r"(\d+)\s*時間", time_range)
