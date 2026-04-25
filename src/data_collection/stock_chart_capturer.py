@@ -91,9 +91,8 @@ class StockChartCapturer:
                     continue
 
             if not chart_element:
-                print(f"⚠️ チャート要素が見つかりませんでした。ページ全体のスクリーンショットを試みます。")
-                # フォールバック：要素が見つからない場合はボディ全体を撮る
-                chart_element = self.driver.find_element(By.TAG_NAME, "body")
+                print(f"⚠️ チャート要素が見つかりませんでした。")
+                return None
 
             # 描画バッファ（これがないとグラフの中身が空になることがあります）
             time.sleep(self.chart_render_wait_sec)
@@ -109,6 +108,15 @@ class StockChartCapturer:
             
             # 要素単体のスクリーンショットを実行
             chart_element.screenshot(filepath)
+
+            # ファイルサイズが極端に小さい（または空）場合は失敗とみなす
+            if os.path.exists(filepath):
+                file_size = os.path.getsize(filepath)
+                if file_size < 10000: # 10KB未満は中身が空かエラー画面の可能性が高い
+                    print(f"⚠️ 画像サイズが小さすぎます ({file_size} bytes)。取得失敗とみなします。")
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    return None
             
             print(f"✅ 保存成功: {filepath}")
             return filepath
