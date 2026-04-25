@@ -233,9 +233,15 @@ def render_scenes_to_video(
         if target_files:
             # 画像パスを解決
             resolved_paths = []
+            valid_target_files = []
             for img_name in target_files:
                 p = _asset_for_visual(images_dir, img_name)
-                if p: resolved_paths.append(p)
+                if p: 
+                    resolved_paths.append(p)
+                    valid_target_files.append(img_name)
+            
+            # 実際に存在するファイルのみを対象にする
+            target_files = valid_target_files
 
             # テキストがあるかどうか、および画像の向きをレイアウト計算に伝える
             layout_configs = _calculate_smart_layout(
