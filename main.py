@@ -92,7 +92,7 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     description = f"""{news_intro}{impact_desc}
 
 【本日のキーワード】
-株価 予想、明日の注目銘柄、株式投資、新NISA、資産運用、日経平均、S&P500
+株価予想、明日の注目銘柄、株式投資、新NISA、資産運用、日経平均、S&P500
 
 【本チャンネルについて】
 マイカブ（MaiKabu）は、毎日の株ニュースを投資初心者の方に向けて、専門用語を抑えてやさしくお届けするチャンネルです。
