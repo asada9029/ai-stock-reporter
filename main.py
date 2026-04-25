@@ -56,12 +56,12 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     
     if "morning" in video_type:
         base_title = f"【今日の株ニュース｜{date_str} 朝刊】"
-        impact_desc = "また、米国株（S&P500）の今後の見通しや、セクター騰落率、日本株への影響について初心者の方にもわかりやすく解説します！"
-        hashtags = "#米国株\n#S&P500\n#株ニュース\n#投資初心者\n#マイカブ"
+        impact_desc = "また、米国株（S&P500）の今後の株価予想や、セクター騰落率、日本株への影響について初心者の方にもわかりやすく解説します！"
+        hashtags = "#米国株\n#S&P500\n#株ニュース\n#投資初心者\n#株価予想\n#マイカブ"
     else:
         base_title = f"【今日の株ニュース｜{date_str} 夕刊】"
-        impact_desc = "また、日本株（日経平均）の今後の見通しや、注目の決算速報、セクター騰落率、米国株の昨晩の動きについて初心者の方にもわかりやすく解説します！"
-        hashtags = "#日本株\n#日経平均\n#株ニュース\n#投資初心者\n#マイカブ"
+        impact_desc = "また、日本株（日経平均）の今後の株価予想や、明日の注目銘柄、注目の決算速報、セクター騰落率について初心者の方にもわかりやすく解説します！"
+        hashtags = "#日本株\n#日経平均\n#株ニュース\n#投資初心者\n#明日の注目銘柄\n#株価予想\n#マイカブ"
 
     # タイトルはサムネイルのメインタイトルを使用し、最後に【初心者向け】を追加
     title = f"{base_title}{thumbnail_title}【初心者向け】"
@@ -90,6 +90,9 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
         news_intro = f"本日は「{thumbnail_title}」について解説します。\n"
 
     description = f"""{news_intro}{impact_desc}
+
+【本日のキーワード】
+株価 予想、明日の注目銘柄、株式投資、新NISA、資産運用、日経平均、S&P500
 
 【本チャンネルについて】
 マイカブ（MaiKabu）は、毎日の株ニュースを投資初心者の方に向けて、専門用語を抑えてやさしくお届けするチャンネルです。
