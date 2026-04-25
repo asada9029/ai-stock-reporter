@@ -157,7 +157,11 @@ class DataAggregator:
             sector_analysis_list = []
             if target_sectors:
                 sector_names_str = ", ".join([s["name"] for s in target_sectors if s["name"]])
-                prompt = f"""米国の株式市場における、以下のセクターの過去12時間の最新ニュースをそれぞれ3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
+                
+                # 月曜日の朝は週末のニュースも含めるように調整
+                time_range_str = "過去72時間" if datetime.now().weekday() == 0 else "過去12時間"
+                
+                prompt = f"""米国の株式市場における、以下のセクターの{time_range_str}の最新ニュースをそれぞれ3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
     出力は、セクター名をキーとし、その値はニュースのリスト（各ニュースは辞書形式で "title" と "summary" を含む）としてください。余計な説明や```json```などのマークダウンは不要です。
 
 セクターリスト: [{sector_names_str}]

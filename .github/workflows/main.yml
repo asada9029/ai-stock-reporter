@@ -4,9 +4,11 @@ on:
   schedule:
     # Github Actionsのスケジュールは、中途半端な時間を指定すると、時間通りに実行されやすいらしい
     # 朝動画: 日本時間 5:00 (UTC 20:00 前日)
-    - cron: '0 20 * * *'
+    # 日〜木曜のUTC 20:00（月〜金曜のJST 5:00）に実行
+    - cron: '0 20 * * 0-4'
     # 夜動画: 日本時間 15:47 (UTC 06:47)
-    - cron: '47 6 * * *'
+    # 月〜金曜のUTC 06:47（月〜金曜のJST 15:47）に実行
+    - cron: '47 6 * * 1-5'
   workflow_dispatch:
     inputs:
       video_type:
@@ -70,7 +72,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "type=${{ github.event.inputs.video_type }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.schedule }}" = "0 20 * * *" ]; then
+          elif [[ "${{ github.event.schedule }}" == "0 20 * *"* ]]; then
             echo "type=morning_video" >> $GITHUB_OUTPUT
           else
             echo "type=evening_video" >> $GITHUB_OUTPUT
