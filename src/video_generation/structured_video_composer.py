@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import os
+from datetime import datetime
 import numpy as np
 from PIL import Image
 
@@ -14,12 +15,42 @@ from moviepy import (
 # v2.0系でのエフェクトクラス
 from moviepy.video.fx import FadeIn, FadeOut, MaskColor
 
-def _asset_for_emotion(assets_dir: Path, emotion: str) -> Optional[Path]:
-    candidates = [
-        assets_dir / f"character_{emotion}.png",
-        assets_dir / f"{emotion}.png",
-        assets_dir / "character_normal.png", 
-    ]
+def _wrap_text_jp(text: str, max_chars_per_line: int) -> str:
+    """
+    日本語テキストを「文字数ベース」で折り返す。
+    - 既存の改行は保持
+    - 半角/全角の厳密幅ではなく、レイアウト崩れ防止のための簡易ラップ
+    """
+    if not text:
+        return ""
+    lines = str(text).split("\n")
+    out_lines: list[str] = []
+    for ln in lines:
+        s = ln.rstrip()
+        if not s:
+            out_lines.append("")
+            continue
+        if len(s) <= max_chars_per_line:
+            out_lines.append(s)
+            continue
+        for i in range(0, len(s), max_chars_per_line):
+            out_lines.append(s[i : i + max_chars_per_line])
+    return "\n".join(out_lines).strip("\n")
+
+def _asset_for_emotion(assets_dir: Path, emotion: str, is_shorts: bool = False) -> Optional[Path]:
+    if is_shorts:
+        # ショート動画専用：mini.png を優先
+        candidates = [
+            assets_dir / "mini.png",
+            assets_dir / f"character_{emotion}.png",
+            assets_dir / "character_normal.png",
+        ]
+    else:
+        candidates = [
+            assets_dir / f"character_{emotion}.png",
+            assets_dir / f"{emotion}.png",
+            assets_dir / "character_normal.png", 
+        ]
     for p in candidates:
         if p.exists():
             return p
@@ -59,8 +90,26 @@ def _find_font_path(fonts_dir: Path) -> Optional[str]:
             return str(p)
     return None
 
-def _load_image_clip(path: Path, size: Tuple[int, int]) -> ImageClip:
-    return ImageClip(str(path)).resized(new_size=size)
+def _load_image_clip(path: Path, size: Tuple[int, int], crop_to_aspect: bool = False) -> ImageClip:
+    """画像を読み込み、リサイズする。crop_to_aspect=True の場合はアスペクト比に合わせてクロップする。"""
+    clip = ImageClip(str(path))
+    if crop_to_aspect:
+        # ターゲットのアスペクト比 (w/h)
+        target_ratio = size[0] / size[1]
+        current_ratio = clip.w / clip.h
+        
+        if current_ratio > target_ratio:
+            # 元画像の方が横長 -> 左右をカット
+            new_w = int(clip.h * target_ratio)
+            x_center = clip.w / 2
+            clip = clip.cropped(x1=x_center - new_w/2, y1=0, x2=x_center + new_w/2, y2=clip.h)
+        else:
+            # 元画像の方が縦長（または同じ） -> 上下をカット
+            new_h = int(clip.w / target_ratio)
+            y_center = clip.h / 2
+            clip = clip.cropped(x1=0, y1=y_center - new_h/2, x2=clip.w, y2=y_center + new_h/2)
+            
+    return clip.resized(new_size=size)
 
 def _load_frame_with_chromakey(path: Path, size: Tuple[int, int]) -> ImageClip:
     """グリーンバック(#00FF00)を透過させてImageClipとして読み込む"""
@@ -104,6 +153,25 @@ def _calculate_smart_layout(count: int, screen_size: Tuple[int, int], has_text: 
     two_image_layout: 2枚の場合のレイアウト ("horizontal" または "vertical")
     """
     sw, sh = screen_size
+    is_shorts = sw < sh
+    
+    if is_shorts:
+        # --- ショート動画（縦型）のレイアウト ---
+        # 案B（注目銘柄）を想定：上に画像、下に要約、さらに下にキャラ
+        margin = 40
+        available_w = sw - (margin * 2)
+        
+        # 画像は最上部に配置
+        img_h = int(sh * 0.45)
+        start_y = 100 # 少し上にあげる
+        
+        positions = []
+        if count >= 1:
+            # 1枚目をメインとして配置
+            positions.append({"x": margin, "y": start_y, "w": available_w, "h": img_h})
+        return positions
+
+    # --- 横型動画のレイアウト（既存） ---
     # 1080p用に定数をスケールアップ (720p時の1.5倍)
     text_area_h = 165
     title_area_h = 180
@@ -184,26 +252,32 @@ def render_scenes_to_video(
         
         # --- 1. 背景レイヤー ---
         bg_name = sc.get("bg_name", "bg_illust.png")
-        if bg_name == "bg_subscribe":
-            # チャンネル登録シーン用の背景色（目に優しいクリーム色）
-            bg_clip = ColorClip(size, color=(255, 249, 225)) # クリーム色
+        is_shorts = size[0] < size[1] # 縦長ならショート
+        
+        if is_shorts or bg_name == "bg_subscribe":
+            # ショート動画またはチャンネル登録シーンはクリーム色（目に優しい色）
+            # よりクリーム色を強く (Cream: 255, 253, 208)
+            bg_clip = ColorClip(size, color=(255, 253, 208))
         else:
             bg_path = _asset_for_visual(images_dir, bg_name)
             if bg_path:
                 try:
-                    bg_clip = _load_image_clip(bg_path, size)
+                    # ショートの場合はクロップして中央部分を使用
+                    bg_clip = _load_image_clip(bg_path, size, crop_to_aspect=is_shorts)
                 except Exception as e:
                     print(f"⚠️ 背景画像読み込み失敗 ({bg_name}): {e}")
                     bg_clip = ColorClip(size, color=(30, 30, 40))
             else:
                 bg_clip = ColorClip(size, color=(30, 30, 40))
 
+        # 各シーンの背景は必ずシーン区間に合わせる（未設定だと t=0 に重なり全面を覆う）
         bg_clip = bg_clip.with_duration(total_scene_duration).with_start(cumulative_time)
         all_clips.append(bg_clip)
 
         # --- 2. セクションタイトル (動的リサイズ) ---
         section_title = sc.get("section_title")
-        if section_title and section_title != "subscribe":
+        # ショートではタイトル表示をしない
+        if (not is_shorts) and section_title and section_title != "subscribe":
             try:
                 # 先にテキストクリップを作成してサイズを取得
                 title_clip = TextClip(
@@ -226,6 +300,40 @@ def render_scenes_to_video(
                 all_clips.append(title_clip)
             except Exception as e:
                 print(f"⚠️ セクションタイトル生成失敗: {e}")
+
+        # --- 2.5 ショート案Aのタイトル（title_frame） ---
+        is_shorts_a = bool(is_shorts and (not sc.get("target_files")) and sc.get("on_screen_text"))
+        if is_shorts_a and sc.get("section_title") != "subscribe":
+            try:
+                # 案AのタイトルはAIに作らせず、コード側で固定生成して安定させる
+                now = datetime.now()
+                title_text = f"{now.month}/{now.day}の3大ニュース"
+
+                title_clip = TextClip(
+                    text=title_text,
+                    font=font_to_use,
+                    font_size=64,
+                    color="#4A2711",
+                    method="label",
+                    size=(None, 90),
+                ).with_duration(total_scene_duration).with_start(cumulative_time)
+
+                frame_w = min(size[0] - 80, title_clip.w + 220)
+                frame_h = title_clip.h + 120
+                frame_path = images_dir / "title_frame.png"
+                if frame_path.exists():
+                    t_frame = _load_frame_with_chromakey(frame_path, (frame_w, frame_h))
+                    all_clips.append(
+                        t_frame.with_position(("center", 40))
+                        .with_duration(total_scene_duration)
+                        .with_start(cumulative_time)
+                    )
+
+                title_x = (size[0] - frame_w) // 2 + 95
+                title_y = 40 + (frame_h - title_clip.h) // 2 - 5
+                all_clips.append(title_clip.with_position((title_x, title_y)))
+            except Exception as e:
+                print(f"⚠️ ショート案Aタイトル生成失敗: {e}")
 
         # --- 3. メインビジュアルレイヤー (既存の1〜4枚ロジック) ---
         target_files = sc.get("target_files", [])
@@ -277,28 +385,60 @@ def render_scenes_to_video(
         # --- 4. 要約テキストパネル (動的リサイズ) ---
         if on_screen_text:
             try:
-                # 奇数番目を「事実・見出し」、偶数番目を「考察」として処理する
+                # 豆腐文字（サロゲートペアや特殊記号）対策として、安全な文字に置換
                 formatted_lines = []
-                for i, t in enumerate(on_screen_text):
-                    # 豆腐文字（サロゲートペアや特殊記号）対策として、安全な文字に置換
-                    safe_t = t.encode('cp932', errors='ignore').decode('cp932').strip()
-                    
-                    # if i % 2 == 0:
-                    #     # 事実・見出し (0, 2, 4...)
-                    #     if not safe_t.startswith("■"): safe_t = f"■ {safe_t}"
-                    #     formatted_lines.append(safe_t)
-                    # else:
-                    #     # 考察・注意点 (1, 3, 5...)
-                    #     if "└" not in safe_t: safe_t = f"  └ {safe_t}"
-                    #     formatted_lines.append(safe_t)
-
-                    formatted_lines.append(safe_t)
+                # on_screen_text が文字列単体の場合はリストに変換
+                text_list = [on_screen_text] if isinstance(on_screen_text, str) else on_screen_text
                 
-                # 行間が広すぎないよう、ダブル改行(\n\n)からシングル改行(\n)に変更
-                summary_text = "\n".join(formatted_lines)
+                for t in text_list:
+                    safe_t = t.encode("cp932", errors="ignore").decode("cp932").strip()
+                    if safe_t:
+                        formatted_lines.append(safe_t)
+
+                # ショートは「文字数で確実に折り返し」して横はみ出しを防ぐ
+                if is_shorts:
+                    is_a = bool(not target_files)
+                    # 案Aはタイトルを別枠（title_frame）で表示するため、本文は全行をそのまま使う
+                    body_lines = formatted_lines
+                    wrap_n = 17 if is_a else 14
+                    wrapped = []
+                    for ln in body_lines:
+                        wrapped.append(_wrap_text_jp(ln, wrap_n))
+                    summary_text = "\n".join(wrapped).strip()
+                else:
+                    summary_text = "\n".join(formatted_lines)
                 
                 # 画像がある場合は、画像の下に配置するためのサイズと座標を調整
-                if target_files:
+                if is_shorts:
+                    # 【ショート動画：縦型レイアウト】
+                    # 案A: テキストのみ（中央付近）
+                    # 案B: 上にチャート、チャートの下に要約テキスト
+                    if target_files:
+                        # --- 案B（画像あり）の設定 ---
+                        text_w = size[0] - 80
+                        img_y = 100
+                        img_h = int(size[1] * 0.45)
+                        text_y_base = img_y + img_h - 10
+                        text_h_max = int(size[1] * 0.25)
+                        base_font_size = 48
+                        frame_padding_h = 90
+                        frame_offset_y = 50
+                        frame_name = "main_frame.png"
+                    else:
+                        # --- 案A（テキストのみ）の設定 ---
+                        text_w = size[0] + 180
+                        text_y_base = 170
+                        text_h_max = int(size[1] * 0.6)
+                        base_font_size = 68
+
+                        frame_padding_h = 10
+                        frame_offset_y = 0
+                        # 案A専用の縦長フレームを使用
+                        frame_name = "tate_main_flame.png"
+                    
+                    reduction_per_line = 4
+                    text_offset_y = 0
+                elif target_files:
                     # 【画像あり：以前の完璧なレイアウトを維持】
                     text_h_max = int(available_h * 0.5)
                     text_y_base = start_y + int(available_h * 0.6) + margin*2 - 10
@@ -333,21 +473,29 @@ def render_scenes_to_video(
                 # 先にテキストクリップを作成して、実際の高さを取得
                 summary_clip = TextClip(
                     text=summary_text, font=font_to_use, font_size=font_size,
-                    color="#1A237E", method="caption", size=(text_w + 200, text_h_max),
-                    text_align="left"
+                    color="#1A237E", method="caption",
+                    size=(text_w, text_h_max),
+                    text_align="left" # 左揃えに変更
                 ).with_duration(total_scene_duration).with_start(cumulative_time)
                 
                 # テキストの高さに合わせて枠をリサイズ
                 actual_text_h = summary_clip.h
-                frame_path = images_dir / "main_frame.png"
+                frame_path = images_dir / frame_name
                 if frame_path.exists():
                     # 各ケースに最適化されたパディングを適用
-                    m_frame = _load_frame_with_chromakey(frame_path, (text_w + 275, actual_text_h + frame_padding_h))
-                    # 各ケースに最適化されたオフセットで配置
-                    all_clips.append(m_frame.with_position((-100, text_y_base - frame_offset_y)).with_duration(total_scene_duration).with_start(cumulative_time))
+                    if is_shorts:
+                        m_frame = _load_frame_with_chromakey(frame_path, (text_w + 100, actual_text_h + frame_padding_h))
+                        all_clips.append(m_frame.with_position(("center", text_y_base - frame_offset_y)).with_duration(total_scene_duration).with_start(cumulative_time))
+                    else:
+                        m_frame = _load_frame_with_chromakey(frame_path, (text_w + 275, actual_text_h + frame_padding_h))
+                        # 各ケースに最適化されたオフセットで配置
+                        all_clips.append(m_frame.with_position((-100, text_y_base - frame_offset_y)).with_duration(total_scene_duration).with_start(cumulative_time))
 
                 # テキストの位置を調整
-                summary_clip = summary_clip.with_position((-90, text_y_base - text_offset_y))
+                if is_shorts:
+                    summary_clip = summary_clip.with_position(("center", text_y_base))
+                else:
+                    summary_clip = summary_clip.with_position((-90, text_y_base - text_offset_y))
                 if video_cross > 0:
                     summary_clip = summary_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
                 all_clips.append(summary_clip)
@@ -356,27 +504,46 @@ def render_scenes_to_video(
 
         # --- 5. キャラクターレイヤー ---
         emotion = sc.get("emotion", "normal")
-        char_path = _asset_for_emotion(images_dir, emotion)
+        char_path = _asset_for_emotion(images_dir, emotion, is_shorts=is_shorts)
         if char_path and sc.get("section_title") != "subscribe":
             try:
-                # キャラクターは右側 20% の幅に収める
-                char_max_w = int(size[0] * 0.25)
-                char_h = int(size[1] * 0.7)
-                
-                # 警告対策と透過維持のため、RGBAに変換して読み込む
-                with Image.open(str(char_path)) as img:
-                    img_rgba = img.convert("RGBA")
-                    char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
-                
-                if char_clip.w > char_max_w:
-                    char_clip = char_clip.resized(width=char_max_w)
-                
-                # # 下端をメインビジュアルの下端（bottom_yに合わせる）
-                # char_x = size[0] - char_clip.w - 20
-                # char_y = bottom_y - char_clip.h
-                # 下端を画面の最下部に合わせる（字幕の後ろに配置）
-                char_x = size[0] - char_clip.w - 10
-                char_y = size[1] - char_clip.h
+                if is_shorts:
+                    # ショート：mini.png をテキストの左下に配置
+                    char_h = int(size[1] * 0.25)
+                    with Image.open(str(char_path)) as img:
+                        img_rgba = img.convert("RGBA")
+                        # 左右反転
+                        img_flipped = img_rgba.transpose(Image.FLIP_LEFT_RIGHT)
+                        char_clip = ImageClip(np.array(img_flipped)).resized(height=char_h)
+                    
+                    # テキストの位置（text_y_base）と高さ（actual_text_h）から相対的に配置
+                    if on_screen_text:
+                        is_shorts_a = bool(is_shorts and (not sc.get("target_files")) and sc.get("on_screen_text"))
+                        char_x = 30
+                        # テキストの開始位置 + テキストの高さ + 調整
+                        # 案Aだけ、キャラを少し上に寄せる（他レイアウトに影響させない）
+                        char_y_offset = 160 if is_shorts_a else 100
+                        char_y = text_y_base + actual_text_h - char_y_offset
+                        # 画面外にはみ出さないように制限
+                        char_y = min(char_y, size[1] - char_clip.h - 10)
+                    else:
+                        char_x = 30
+                        char_y = size[1] - char_clip.h - 170
+                else:
+                    # 横型：右端に配置
+                    char_max_w = int(size[0] * 0.25)
+                    char_h = int(size[1] * 0.7)
+                    
+                    # 警告対策と透過維持のため、RGBAに変換して読み込む
+                    with Image.open(str(char_path)) as img:
+                        img_rgba = img.convert("RGBA")
+                        char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
+                    
+                    if char_clip.w > char_max_w:
+                        char_clip = char_clip.resized(width=char_max_w)
+                    
+                    char_x = size[0] - char_clip.w - 10
+                    char_y = size[1] - char_clip.h
                 
                 char_clip = char_clip.with_duration(total_scene_duration).with_start(cumulative_time).with_position((char_x, char_y))
                 if video_cross > 0:
@@ -387,13 +554,13 @@ def render_scenes_to_video(
 
         # --- 6. 字幕レイヤー (telop_frame.png 背面) ---
         segments = sc.get("segments", [])
-        if segments and sc.get("section_title") != "subscribe":
+        # ショートでは字幕（segments）を表示しない
+        if (not is_shorts) and segments and sc.get("section_title") != "subscribe":
             frame_path = images_dir / "telop_frame.png"
+            # 横型（既存）
             if frame_path.exists():
                 # 横幅を画面幅に近く(1920に対して1900)、縦幅を動画下端に寄せる
                 telop_w_full = 2200
-                # telop_h_full = 500
-                # telop_y_bottom = size[1] - telop_h_full + 150 # 下端に寄せる
                 telop_h_full = 550
                 telop_y_bottom = size[1] - telop_h_full + 180 # 下端に寄せる
                 telop_frame = _load_frame_with_chromakey(frame_path, (telop_w_full, telop_h_full))
@@ -420,7 +587,17 @@ def render_scenes_to_video(
             if anim_path.exists():
                 try:
                     # アニメーションを読み込み
-                    anim_clip = _load_video_with_chromakey(anim_path, size)
+                    if is_shorts:
+                        # 縦型（ショート）の場合：引き伸ばさず、横幅に合わせてアスペクト比を維持
+                        # 上下に余白ができても良い
+                        anim_clip = VideoFileClip(str(anim_path)).resized(width=size[0])
+                        # 透過処理
+                        anim_clip = _load_video_with_chromakey(anim_path, (size[0], anim_clip.h))
+                        # 画面中央に配置
+                        anim_clip = anim_clip.with_position(("center", "center"))
+                    else:
+                        # 横型（通常）：画面全体に表示
+                        anim_clip = _load_video_with_chromakey(anim_path, size)
                     
                     # セクション全体で表示
                     anim_duration = min(anim_clip.duration, total_scene_duration)

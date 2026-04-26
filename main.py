@@ -54,7 +54,18 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     now = datetime.datetime.now(jst)
     date_str = now.strftime("%m/%d") # YYYY/MM/DD -> MM/DD
     
-    if "morning" in video_type:
+    is_shorts = "shorts" in video_type
+    
+    if is_shorts:
+        if "shorts_a" in video_type:
+            base_title = f"【爆速！今日の株ニュース｜{date_str}】"
+            impact_desc = "今日の重要ニュース3つを1分で解説！本編動画ではさらに詳しく深掘りしています。"
+            hashtags = "#日本株\n#日経平均\n#米国株\n#S&P500\n#株ニュース\n#投資初心者\n#株価予想\n#Shorts\n#マイカブ"
+        else:
+            base_title = f"【明日の注目銘柄｜{date_str}】"
+            impact_desc = "チャートが動いている注目銘柄をピックアップ！明日の投資戦略の参考にしてください。"
+            hashtags = "#日本株\n#日経平均\n#米国株\n#S&P500\n#注目銘柄\n#株価予想\n#Shorts\n#マイカブ"
+    elif "morning" in video_type:
         base_title = f"【今日の株ニュース｜{date_str} 朝刊】"
         impact_desc = "また、米国株（S&P500）の今後の株価予想や、セクター騰落率、日本株への影響について初心者の方にもわかりやすく解説します！"
         hashtags = "#米国株\n#S&P500\n#株ニュース\n#投資初心者\n#株価予想\n#マイカブ"
@@ -144,7 +155,14 @@ def main():
         video_structure = structures.get(args.type)
         
         # データの集約
-        video_category = "morning" if "morning" in args.type else "evening"
+        # shorts_a/b の場合は、直近の朝または夜のデータを流用する
+        if "shorts" in args.type:
+            # 実行時間帯によって朝か夜か決める（5-12時は朝、それ以外は夜のデータを参照）
+            now_hour = datetime.datetime.now(pytz.timezone('Asia/Tokyo')).hour
+            video_category = "morning" if 5 <= now_hour < 12 else "evening"
+        else:
+            video_category = "morning" if "morning" in args.type else "evening"
+            
         aggregator = DataAggregator()
         analysis_data = aggregator.aggregate_all_data(video_type=video_category)
         
@@ -165,6 +183,9 @@ def main():
         video_path = f"output/final_video_{args.type}.mp4"
         enriched_data = {"prev_ir_analysis": analysis_data.get("prev_ir_analysis", [])}
         
+        # ショート動画の場合はサイズを変更
+        video_size = (1080, 1920) if "shorts" in args.type else (1920, 1080)
+        
         print("\n🎬 動画合成を開始します...")
         result_path, thumb_path, thumb_title, thumb_highlights = compose_video_from_analysis(
             video_structure=video_structure,
@@ -172,7 +193,8 @@ def main():
             enriched_data=enriched_data,
             output_video=video_path,
             assets_dir="src/assets",
-            video_type=args.type
+            video_type=args.type,
+            size=video_size
         )
         
         if not result_path or not os.path.exists(video_path):
