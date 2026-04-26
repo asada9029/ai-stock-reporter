@@ -3,6 +3,7 @@
 動画構成から実際の読み上げ台本を生成
 """
 
+import os
 import json
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -51,9 +52,74 @@ class ScriptGenerator:
         """
         video_type = video_structure.get("video_type", "evening_video")
         is_morning = "morning" in video_type
+        is_shorts = "shorts" in video_type
 
-        # 朝動画と夜動画でプロンプトを分岐
-        if is_morning:
+        # 動画タイプに応じてプロンプトを分岐
+        if is_shorts:
+            # ショート動画専用プロンプト
+            shorts_type = "案A（ニュースまとめ）" if "shorts_a" in video_type else "案B（注目銘柄）"
+            
+            # 案Bの場合、チャート画像がある銘柄を特定
+            valid_companies = []
+            if "shorts_b" in video_type:
+                for sector in analysis_data.get("sector_analysis", {}).get("sectors", []):
+                    for company in sector.get("companies", []):
+                        if company.get("chart_image_path"):
+                            valid_companies.append(company)
+            
+            # ※案Aの「◯/◯の3大ニュース」は表示側でコード生成するため、on_screen_text には含めない
+            prompt = f"""
+あなたは株ニュース解説キャラクター「株野（かぶの）みのり」の動画ディレクター兼台本作家です。
+YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を生成してください。
+
+# ショート動画のコンセプト: {shorts_type}
+{"案A: 今日の重要ニュース3つをテンポよく解説します。" if "shorts_a" in video_type else f"案B: チャートが動いている注目銘柄「{valid_companies[0]['company_name'] if valid_companies else '注目銘柄'}」を1つピックアップして深掘りします。"}
+
+# 全般ルール
+- 【60秒の壁】: 読み上げテキスト（text）の合計文字数を200〜240文字程度に抑え、絶対に60秒以内で終わるようにしてください。
+- 【縦型レイアウト】: 
+    - 【重要】ショートでは「タイトル表示」「字幕表示（segments）」は一切しません（テキストは on_screen_text のみを使用）。
+    - 案A（テキストのみ）: target_files は空配列。on_screen_text は必ず「固定フォーマット」で出力してください（下記参照）。
+    - 案B（画像＋テキスト）: 画面上部に target_files（チャート画像）を1枚、その下に on_screen_text（固定フォーマット）で要約テキストを表示します。
+- 【構成】: 
+    - 導入（5秒）: 「こんにちは、株野みのりです！」（※導入シーンからニュース内容を表示してください）
+    - 本編（45秒）: ニュース解説または銘柄解説
+    - 結び（10秒）: 「詳しくは本編動画をチェック！チャンネル登録もお願いします！」
+- 【データ遵守】: 分析データにある正確な数値を使用してください。
+
+# on_screen_text 固定フォーマット（重要）
+- 案A（ニュースまとめ / target_files=[]）:
+    必ず以下の並びを3セット（=ニュース3本）で繰り返す:
+        ■ニュースタイトル
+        └コメント
+        （改行）
+        ■ニュースタイトル
+        └コメント
+        （改行）
+        ■ニュースタイトル
+        └コメント
+    制約: 「■ニュースタイトル」「└コメント」は、それぞれなるべく1行に収めてください（長い場合は短く言い換える）。
+- 案B（注目銘柄 / target_files=[チャート画像1枚]）:
+    必ず以下の形式:
+        ■企業名
+        ・コメント1
+        ・コメント2
+        ・コメント3
+    制約: 各コメントはなるべく1行に収めてください（長い場合は短く言い換える）。
+
+# 分析データ
+{json.dumps(analysis_data, ensure_ascii=False, indent=2)}
+
+# 出力形式
+各シーンオブジェクトは必ず以下のキーを持ってください:
+- scene, section_title, duration, text, emotion, image_type, bg_name, target_files, on_screen_text
+- shorts動画では section_title は空文字（""）でOKです（表示しないため）。
+- shorts動画では image_type は "bg_only" (案A) または "chart" (案B) を基本としてください。
+- target_files: 案Aは []。案Bは `["{valid_companies[0]['chart_image_path'] if valid_companies else ''}"]` のように指定。
+
+出力は純粋なJSON配列のみを返してください。
+"""
+        elif is_morning:
             # 朝動画専用プロンプト（ニュース、セクター、日本波及を重視）
             prompt = f"""
 あなたは株ニュース解説キャラクター「株野（かぶの）みのり」の動画ディレクター兼台本作家です。

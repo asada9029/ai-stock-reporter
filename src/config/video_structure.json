@@ -130,5 +130,33 @@
           }
         }
       ]
+    },
+    "shorts_a": {
+      "video_type": "shorts_a",
+      "total_duration": 60,
+      "sections": [
+        {
+          "name": "shorts_content",
+          "duration": 60,
+          "content": {
+            "title": "爆速！今日の3大ニュース",
+            "description": "今日の重要なニュース3つをテンポよく解説するショート動画。"
+          }
+        }
+      ]
+    },
+    "shorts_b": {
+      "video_type": "shorts_b",
+      "total_duration": 60,
+      "sections": [
+        {
+          "name": "shorts_content",
+          "duration": 60,
+          "content": {
+            "title": "明日の注目銘柄",
+            "description": "チャートが動いている注目銘柄を1つピックアップして深掘りするショート動画。"
+          }
+        }
+      ]
     }
 }

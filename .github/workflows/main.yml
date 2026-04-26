@@ -19,6 +19,8 @@ on:
         options:
           - morning_video
           - evening_video
+          - shorts_a
+          - shorts_b
 
 permissions:
   contents: write
@@ -78,7 +80,7 @@ jobs:
             echo "type=evening_video" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Pipeline and Upload
+      - name: Run Main Video Pipeline and Upload
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
@@ -86,6 +88,28 @@ jobs:
           TZ: 'Asia/Tokyo'
         run: |
           python main.py --type ${{ steps.video-type.outputs.type }}
+
+      - name: Run Shorts A Pipeline and Upload
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.video_type == 'morning_video' || github.event.inputs.video_type == 'evening_video'))
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
+          DEBUG: "False"
+          TZ: 'Asia/Tokyo'
+        run: |
+          # 本編のデータを再利用するため、クリーンアップをスキップ
+          python main.py --type shorts_a --no-cleanup
+
+      - name: Run Shorts B Pipeline and Upload
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.video_type == 'morning_video' || github.event.inputs.video_type == 'evening_video'))
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
+          DEBUG: "False"
+          TZ: 'Asia/Tokyo'
+        run: |
+          # 本編のデータを再利用するため、クリーンアップをスキップ
+          python main.py --type shorts_b --no-cleanup
 
       # 一時停止: 動画をartifactに保存しない（再開時は if を削除）
       - name: Archive production artifacts

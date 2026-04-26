@@ -33,8 +33,9 @@ class TableImageGenerator:
         columns: 表示する列名のリスト
         column_mapping: 列名の表示名マッピング
         """
+        print(f"Generating table image: {title}")
         if not data:
-            print(f"警告: {title} のデータがありません。画像を生成しません。")
+            print(f"Warning: No data for {title}. Skipping image generation.")
             return None
 
         df = pd.DataFrame(data)

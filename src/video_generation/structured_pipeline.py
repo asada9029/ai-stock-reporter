@@ -20,7 +20,8 @@ def compose_video_from_analysis(
     assets_dir: str = "src/assets",
     size=(1920, 1080),
     fps: int = 24,
-    video_type: str = "evening"
+    video_type: str = "evening",
+    pre_generated_scenes: Optional[List[Dict]] = None
 ) -> Tuple[str, str, str, List[str]]:
     """
     Returns: (video_path, thumbnail_path, thumbnail_title, thumbnail_highlights)
@@ -31,36 +32,53 @@ def compose_video_from_analysis(
     # --- 1. サムネイル生成とニュース選定 (順序を先に持ってくる) ---
     thumb_path, thumb_title, thumb_highlights = "", "", []
     main_news_index, highlight_indices = 0, []
-    try:
-        print("➡️ サムネイル生成とニュース選定を開始...")
-        tg = ThumbnailGenerator()
-        thumb_out = str(out_path.parent / f"thumbnail_{out_path.stem}.png")
-        thumb_path, thumb_title, thumb_highlights, main_news_index, highlight_indices = tg.create_thumbnail_from_analysis(
-            analysis_result=analysis_data,
-            video_type=video_type,
-            output_path=thumb_out
-        )
-        # 選定された情報を analysis_data に統合して ScriptGenerator に渡す
-        analysis_data["selected_thumbnail_title"] = thumb_title
-        analysis_data["selected_highlights"] = thumb_highlights
-        analysis_data["main_news_index"] = main_news_index
-        analysis_data["highlight_indices"] = highlight_indices
-        print(f"✅ サムネイル完成 & ニュース選定完了: {thumb_title}")
-    except Exception as e:
-        print(f"⚠️ サムネイル生成・選定失敗: {e}")
+    
+    is_shorts = "shorts" in video_type
+    
+    if not is_shorts:
+        try:
+            print("➡️ サムネイル生成とニュース選定を開始...")
+            tg = ThumbnailGenerator()
+            thumb_out = str(out_path.parent / f"thumbnail_{out_path.stem}.png")
+            thumb_path, thumb_title, thumb_highlights, main_news_index, highlight_indices = tg.create_thumbnail_from_analysis(
+                analysis_result=analysis_data,
+                video_type=video_type,
+                output_path=thumb_out
+            )
+            # 選定された情報を analysis_data に統合して ScriptGenerator に渡す
+            analysis_data["selected_thumbnail_title"] = thumb_title
+            analysis_data["selected_highlights"] = thumb_highlights
+            analysis_data["main_news_index"] = main_news_index
+            analysis_data["highlight_indices"] = highlight_indices
+            print(f"✅ サムネイル完成 & ニュース選定完了: {thumb_title}")
+        except Exception as e:
+            print(f"⚠️ サムネイル生成・選定失敗: {e}")
+    else:
+        print("➡️ ショート動画のためサムネイル生成をスキップします。")
 
     # --- 2. シーン構成と台本の生成 ---
-    sg = ScriptGenerator()
-    print("➡️ 生成: 構造化シーンをLLMで作成します...")
-    scenes = sg.generate_structured_scenes(
-        video_structure=video_structure, 
-        analysis_data=analysis_data, 
-        enriched_data=enriched_data
-    )
+    if pre_generated_scenes:
+        print("➡️ 既存の台本（シーン配列）を使用します...")
+        scenes = pre_generated_scenes
+    else:
+        sg = ScriptGenerator()
+        print("➡️ 生成: 構造化シーンをLLMで作成します...")
+        scenes = sg.generate_structured_scenes(
+            video_structure=video_structure, 
+            analysis_data=analysis_data, 
+            enriched_data=enriched_data
+        )
 
     # --- 3. チャンネル登録お願いシーンを末尾に強制追加 ---
     is_morning = "morning" in video_type
-    closing_text = "この動画が少しでも役に立ったら、チャンネル登録、高評価、そしてハイプでの応援をよろしくお願いします！皆さんの応援が、みのりの励みになります。それでは、今日も一日頑張りましょう！" if is_morning else "この動画が少しでも役に立ったら、チャンネル登録、高評価、そしてハイプでの応援をよろしくお願いします！皆さんの応援が、みのりの励みになります。それでは、また明日お会いしましょう！"
+    is_shorts = "shorts" in video_type
+    
+    if is_shorts:
+        closing_text = "詳しくは本編動画をチェック！チャンネル登録、高評価もよろしくお願いします！"
+    elif is_morning:
+        closing_text = "この動画が少しでも役に立ったら、チャンネル登録、高評価、そしてハイプでの応援をよろしくお願いします！皆さんの応援が、みのりの励みになります。それでは、今日も一日頑張りましょう！"
+    else:
+        closing_text = "この動画が少しでも役に立ったら、チャンネル登録、高評価、そしてハイプでの応援をよろしくお願いします！皆さんの応援が、みのりの励みになります。それでは、また明日お会いしましょう！"
     
     subscribe_scene = {
         "scene": len(scenes) + 1,
