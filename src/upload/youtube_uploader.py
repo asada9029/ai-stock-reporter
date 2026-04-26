@@ -132,7 +132,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", required=True, help="Path to video file")
-    parser.add_argument("--type", required=True, choices=["morning_video", "evening_video"])
+    parser.add_argument(
+        "--type",
+        required=True,
+        choices=["morning_video", "evening_video", "shorts_a", "shorts_b"],
+    )
     parser.add_argument("--thumbnail", help="Path to thumbnail image")
     args = parser.parse_args()
 

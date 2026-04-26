@@ -77,13 +77,14 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     # タイトルはサムネイルのメインタイトルを使用し、最後に【初心者向け】を追加
     title = f"{base_title}{thumbnail_title}【初心者向け】"
     
-    # 次の配信予定を計算
-    next_upload = get_next_market_open(video_type)
+    # 次の配信予定を計算（ショートは本編スロットに合わせて判定）
+    schedule_type = _market_schedule_video_type(video_type)
+    next_upload = get_next_market_open(schedule_type)
     next_date_str = next_upload.strftime("%m/%d")
     next_time_str = next_upload.strftime("%H:%M")
     
     # 休日を挟む場合のメッセージ
-    if "morning" in video_type:
+    if "morning" in schedule_type:
         is_gap = next_upload.date() != now.date()
     else:
         is_gap = (next_upload.date() - now.date()).days > 1
@@ -124,18 +125,38 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
 """
     return title, description
 
+
+def _market_schedule_video_type(video_type: str) -> str:
+    """
+    市場カレンダー判定・次回配信計算に使う「本編相当」のタイプを返す。
+    - shorts は GitHub Actions 上では本編直後に走る想定のため、実行時刻(JST)から朝/夜を推定する。
+    """
+    if "shorts" not in video_type:
+        return video_type
+    jst = pytz.timezone("Asia/Tokyo")
+    h = datetime.datetime.now(jst).hour
+    # 朝本編ジョブは JST 5:00 前後、夜本編ジョブは JST 15:47 前後
+    return "morning_video" if 5 <= h < 12 else "evening_video"
+
+
 def main():
     parser = argparse.ArgumentParser(description="AI Stock Reporter Production Entry Point")
-    parser.add_argument("--type", default="evening_video", choices=["morning_video", "evening_video"])
+    parser.add_argument(
+        "--type",
+        default="evening_video",
+        choices=["morning_video", "evening_video", "shorts_a", "shorts_b"],
+    )
     parser.add_argument("--skip-upload", action="store_true", help="Skip YouTube upload")
     parser.add_argument("--no-cleanup", action="store_true", help="Skip cleanup")
     args = parser.parse_args()
 
     print(f"\n🚀 AI Stock Reporter (Production) 起動: {args.type}")
 
+    market_schedule_type = _market_schedule_video_type(args.type)
+
     # 1. 市場の休日判定
-    if not is_market_open(args.type):
-        next_upload = get_next_market_open(args.type)
+    if not is_market_open(market_schedule_type):
+        next_upload = get_next_market_open(market_schedule_type)
         next_date_str = next_upload.strftime("%m/%d")
         next_time_str = next_upload.strftime("%H:%M")
         print(f"\n☕ 今日は市場の休日のため、{args.type} の実行をスキップします。")
@@ -167,11 +188,17 @@ def main():
         analysis_data = aggregator.aggregate_all_data(video_type=video_category)
         
         # 次の配信予定を計算して分析データに含める（台本用）
-        next_upload = get_next_market_open(args.type)
+        next_upload = get_next_market_open(market_schedule_type)
+        jst = pytz.timezone("Asia/Tokyo")
+        now_jst = datetime.datetime.now(jst)
+        if "morning" in market_schedule_type:
+            is_holiday_gap = next_upload.date() != now_jst.date()
+        else:
+            is_holiday_gap = (next_upload.date() - now_jst.date()).days > 1
         analysis_data["next_delivery_info"] = {
             "date": next_upload.strftime("%m/%d"),
             "time": next_upload.strftime("%H:%M"),
-            "is_holiday_gap": (next_upload.date() - datetime.datetime.now(pytz.timezone('Asia/Tokyo')).date()).days > 1 if "evening" in args.type else next_upload.date() != datetime.datetime.now(pytz.timezone('Asia/Tokyo')).date()
+            "is_holiday_gap": is_holiday_gap,
         }
 
         # 最新の集約データパスを取得
@@ -205,7 +232,7 @@ def main():
         if not args.skip_upload:
             print("\n📺 YouTubeへのアップロード・予約投稿を開始します...")
             title, description = generate_youtube_metadata(args.type, thumb_title, thumb_highlights)
-            publish_at = get_publish_time(args.type)
+            publish_at = get_publish_time(market_schedule_type)
             thumbnail_path = thumb_path if thumb_path else f"output/thumbnail_final_video_{args.type}.png"
             
             uploader = YouTubeUploader()
