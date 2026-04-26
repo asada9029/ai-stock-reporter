@@ -218,7 +218,7 @@ class MarketIndexCapturer:
 
         driver = self._get_driver()
         try:
-            print(f"🌐 {market_info['name']} チャートページにアクセス中: {market_info['url']}")
+            print(f"Accessing {market_info['name']} chart page: {market_info['url']}")
             driver.get(market_info['url'])
             # Actions では表示が遅い/別DOMになることがあるので少し長めに待つ
             WebDriverWait(driver, self.page_wait_timeout).until(
@@ -233,7 +233,7 @@ class MarketIndexCapturer:
             filename = f"{market_key.lower()}_chart_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             filepath = os.path.join(self.output_dir, filename)
             chart_elem.screenshot(filepath)
-            print(f"✅ {market_info['name']} チャート画像保存: {filepath}")
+            print(f"Chart image saved for {market_info['name']}: {filepath}")
 
             # 数値データのスクレイピング
             soup = BeautifulSoup(driver.page_source, 'lxml')
@@ -260,7 +260,7 @@ class MarketIndexCapturer:
                     change_percent = change_percent_elem.get_text(strip=True)
 
             else:
-                print(f"⚠️ {market_info['name']} の数値データエリアが見つかりませんでした。")
+                print(f"Warning: Data area not found for {market_info['name']}")
 
             return {
                 "market": market_key,
@@ -278,7 +278,7 @@ class MarketIndexCapturer:
                 f"market={market_key} selector={chart_selector}\n"
                 f"exception={repr(e)}"
             )
-            print(f"❌ {market_info['name']} データ取得中にタイムアウト: selector={chart_selector}")
+            print(f"Error: Timeout for {market_info['name']} (selector={chart_selector})")
             self._dump_failure_artifacts(market_key, driver, note)
             return _fallback_yfinance("timeout") or None
         except WebDriverException as e:
@@ -287,7 +287,7 @@ class MarketIndexCapturer:
                 f"market={market_key} selector={chart_selector}\n"
                 f"exception={repr(e)}"
             )
-            print(f"❌ {market_info['name']} WebDriverエラー: {repr(e)}")
+            print(f"Error: WebDriver error for {market_info['name']}: {repr(e)}")
             self._dump_failure_artifacts(market_key, driver, note)
             return _fallback_yfinance("webdriver_error") or None
         except Exception as e:
@@ -297,7 +297,7 @@ class MarketIndexCapturer:
                 f"type={type(e)}\n"
                 f"exception={repr(e)}"
             )
-            print(f"❌ {market_info['name']} データ取得中にエラーが発生しました: {repr(e)}")
+            print(f"Error: Unhandled exception for {market_info['name']}: {repr(e)}")
             self._dump_failure_artifacts(market_key, driver, note)
             return _fallback_yfinance("exception") or None
         finally:

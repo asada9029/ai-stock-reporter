@@ -194,7 +194,7 @@ class SectorChartCapturer:
 
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
         try:
-            print(f"🌐 セクターランキングページにアクセス中: {url}")
+            print(f"Accessing sector ranking page: {url}")
             driver.get(url)
             
             # 修正: WebDriverWaitを使用して要素が出現するまで待機
@@ -202,9 +202,9 @@ class SectorChartCapturer:
             try:
                 elem = driver.find_element(By.CSS_SELECTOR, target_selector)
                 elem.screenshot(filepath)
-                print(f"✅ 部分スクリーンショット保存: {filepath}")
+                print(f"Partial screenshot saved: {filepath}")
             except Exception as e:
-                print(f"❌ 要素 {target_selector} の待機中にタイムアウトしました: {e}")
+                print(f"Error: Timeout waiting for element {target_selector}: {e}")
                 raise
         finally:
             driver.quit()

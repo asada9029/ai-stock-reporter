@@ -55,6 +55,11 @@ def save_video_metadata(video_id: str, published_at: str, ir_stocks: List[Dict],
     data["latest"] = entry
     data["history"] = history
 
+    # 履歴の上限設定（直近14件 = 約1週間分、朝夜2回想定）
+    MAX_HISTORY = 14
+    if len(data["history"]) > MAX_HISTORY:
+        data["history"] = data["history"][:MAX_HISTORY]
+
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 

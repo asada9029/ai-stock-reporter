@@ -2,6 +2,16 @@
 venv/
 .env
 src/config/youtube_secrets.json
+
+# Python cache / bytecode
+**/__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
 output/
 data/*
 !data/previous_videos.json
