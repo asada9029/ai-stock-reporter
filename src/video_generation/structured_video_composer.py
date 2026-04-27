@@ -163,7 +163,8 @@ def _calculate_smart_layout(count: int, screen_size: Tuple[int, int], has_text: 
         
         # 画像は最上部に配置
         img_h = int(sh * 0.45)
-        start_y = 100 # 少し上にあげる
+        # ここを増やすと「案Bの画像」が下にズレる（=余白が増える）
+        start_y = 150
         
         positions = []
         if count >= 1:
@@ -254,10 +255,21 @@ def render_scenes_to_video(
         bg_name = sc.get("bg_name", "bg_illust.png")
         is_shorts = size[0] < size[1] # 縦長ならショート
         
-        if is_shorts or bg_name == "bg_subscribe":
-            # ショート動画またはチャンネル登録シーンはクリーム色（目に優しい色）
-            # よりクリーム色を強く (Cream: 255, 253, 208)
+        if bg_name == "bg_subscribe":
+            # チャンネル登録シーンは単色（目に優しいクリーム色）
             bg_clip = ColorClip(size, color=(255, 253, 208))
+        elif is_shorts:
+            # ショート動画は縦型専用背景を使用（必要に応じてクロップしてフィット）
+            bg_path = _asset_for_visual(images_dir, "tate_bg_illust.png")
+            if bg_path:
+                try:
+                    bg_clip = _load_image_clip(bg_path, size, crop_to_aspect=True)
+                except Exception as e:
+                    print(f"⚠️ ショート背景画像読み込み失敗 (tate_bg_illust.png): {e}")
+                    bg_clip = ColorClip(size, color=(255, 253, 208))
+            else:
+                print("⚠️ ショート背景が見つからないため、クリーム色で代替します (tate_bg_illust.png)")
+                bg_clip = ColorClip(size, color=(255, 253, 208))
         else:
             bg_path = _asset_for_visual(images_dir, bg_name)
             if bg_path:
@@ -319,18 +331,21 @@ def render_scenes_to_video(
                 ).with_duration(total_scene_duration).with_start(cumulative_time)
 
                 frame_w = min(size[0] - 80, title_clip.w + 220)
-                frame_h = title_clip.h + 120
+                frame_h = title_clip.h + 150
                 frame_path = images_dir / "title_frame.png"
+                # ここを変えると「フレームと文字」をまとめて上下に動かせる
+                title_frame_y = 160
                 if frame_path.exists():
                     t_frame = _load_frame_with_chromakey(frame_path, (frame_w, frame_h))
                     all_clips.append(
-                        t_frame.with_position(("center", 40))
+                        t_frame.with_position(("center", title_frame_y))
                         .with_duration(total_scene_duration)
                         .with_start(cumulative_time)
                     )
 
                 title_x = (size[0] - frame_w) // 2 + 95
-                title_y = 40 + (frame_h - title_clip.h) // 2 - 5
+                # 文字のYはフレーム位置と連動させる（title_y だけ動いてフレームがズレない問題の対策）
+                title_y = title_frame_y + (frame_h - title_clip.h) // 2 - 20
                 all_clips.append(title_clip.with_position((title_x, title_y)))
             except Exception as e:
                 print(f"⚠️ ショート案Aタイトル生成失敗: {e}")
@@ -391,7 +406,11 @@ def render_scenes_to_video(
                 text_list = [on_screen_text] if isinstance(on_screen_text, str) else on_screen_text
                 
                 for t in text_list:
-                    safe_t = t.encode("cp932", errors="ignore").decode("cp932").strip()
+                    # on_screen_text が完全に消える事故を避けるため、cp932 で空になった場合は原文を使う
+                    raw_t = str(t).strip()
+                    safe_t = raw_t.encode("cp932", errors="ignore").decode("cp932").strip()
+                    if not safe_t and raw_t:
+                        safe_t = raw_t
                     if safe_t:
                         formatted_lines.append(safe_t)
 
@@ -400,7 +419,7 @@ def render_scenes_to_video(
                     is_a = bool(not target_files)
                     # 案Aはタイトルを別枠（title_frame）で表示するため、本文は全行をそのまま使う
                     body_lines = formatted_lines
-                    wrap_n = 17 if is_a else 14
+                    wrap_n = 17 if is_a else 16
                     wrapped = []
                     for ln in body_lines:
                         wrapped.append(_wrap_text_jp(ln, wrap_n))
@@ -415,10 +434,10 @@ def render_scenes_to_video(
                     # 案B: 上にチャート、チャートの下に要約テキスト
                     if target_files:
                         # --- 案B（画像あり）の設定 ---
-                        text_w = size[0] - 80
-                        img_y = 100
+                        text_w = size[0] - 20
+                        img_y = 150
                         img_h = int(size[1] * 0.45)
-                        text_y_base = img_y + img_h - 10
+                        text_y_base = img_y + img_h - 20
                         text_h_max = int(size[1] * 0.25)
                         base_font_size = 48
                         frame_padding_h = 90
@@ -427,7 +446,7 @@ def render_scenes_to_video(
                     else:
                         # --- 案A（テキストのみ）の設定 ---
                         text_w = size[0] + 180
-                        text_y_base = 170
+                        text_y_base = 300
                         text_h_max = int(size[1] * 0.6)
                         base_font_size = 68
 
@@ -450,6 +469,8 @@ def render_scenes_to_video(
                     frame_padding_h = -20 # 以前の数値
                     frame_offset_y = 30   # 以前の数値
                     text_offset_y = 50    # 以前の数値
+                    # 横動画（画像あり）の要約枠
+                    frame_name = "main_frame.png"
                 else:
                     # 【画像なし：今回調整したゆったりレイアウトを適用】
                     text_h_max = available_h - 200
@@ -462,6 +483,8 @@ def render_scenes_to_video(
                     frame_padding_h = 270  # 今回の数値
                     frame_offset_y = 90   # 今回の数値
                     text_offset_y = -25    # 今回の数値
+                    # 横動画（画像なし）の要約枠
+                    frame_name = "main_frame.png"
 
                 # 行数に応じてフォントサイズを調整
                 line_count = len(summary_text.split('\n'))
@@ -617,8 +640,18 @@ def render_scenes_to_video(
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # 画質改善: bitrate と CRF を指定（ショートで「ボケる」問題が出やすい）
+    is_shorts_output = size[0] < size[1]
+    bitrate = "12000k" if is_shorts_output else "9000k"
+    ffmpeg_params = ["-crf", "18", "-preset", "slow"]
     final.write_videofile(
-        str(out_path), fps=fps, codec="libx264", audio=False,
-        threads=max(1, (os.cpu_count() or 2) - 1), logger=None
+        str(out_path),
+        fps=fps,
+        codec="libx264",
+        audio=False,
+        bitrate=bitrate,
+        ffmpeg_params=ffmpeg_params,
+        threads=max(1, (os.cpu_count() or 2) - 1),
+        logger=None,
     )
     return str(out_path)
