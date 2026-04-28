@@ -419,15 +419,30 @@ def render_scenes_to_video(
                     is_a = bool(not target_files)
                     # 案Aはタイトルを別枠（title_frame）で表示するため、本文は全行をそのまま使う
                     body_lines = formatted_lines
-                    wrap_n = 17 if is_a else 16
+                    wrap_n = 18 if is_a else 16
                     wrapped = []
                     for ln in body_lines:
                         wrapped.append(_wrap_text_jp(ln, wrap_n))
                     summary_text = "\n".join(wrapped).strip()
                 else:
-                    summary_text = "\n".join(formatted_lines)
+                    # 横動画の折り返しロジック
+                    is_with_image = bool(target_files)
+                    # 最初から行数が多い（オープニングなど）場合は、フォントが小さくなるので制限を緩める
+                    initial_lines = len(formatted_lines)
+                    if initial_lines > 6:
+                        # オープニング用：フォントが小さいので1行を長めに許容
+                        wrap_n = 40 if is_with_image else 36
+                    else:
+                        # 通常シーン用：フォントが大きいので厳しめに制限
+                        wrap_n = 30 if is_with_image else 23
+                    
+                    wrapped = []
+                    for ln in formatted_lines:
+                        wrapped.append(_wrap_text_jp(ln, wrap_n))
+                    summary_text = "\n".join(wrapped).strip()
                 
                 # 画像がある場合は、画像の下に配置するためのサイズと座標を調整
+                # 縦動画レイアウト
                 if is_shorts:
                     # 【ショート動画：縦型レイアウト】
                     # 案A: テキストのみ（中央付近）
@@ -435,20 +450,20 @@ def render_scenes_to_video(
                     if target_files:
                         # --- 案B（画像あり）の設定 ---
                         text_w = size[0] - 20
-                        img_y = 150
+                        img_y = 200
                         img_h = int(size[1] * 0.45)
-                        text_y_base = img_y + img_h - 20
+                        text_y_base = img_y + img_h - 90
                         text_h_max = int(size[1] * 0.25)
                         base_font_size = 48
-                        frame_padding_h = 90
-                        frame_offset_y = 50
+                        frame_padding_h = 60
+                        frame_offset_y = 25
                         frame_name = "main_frame.png"
                     else:
                         # --- 案A（テキストのみ）の設定 ---
-                        text_w = size[0] + 180
+                        text_w = size[0] + 200
                         text_y_base = 300
                         text_h_max = int(size[1] * 0.6)
-                        base_font_size = 68
+                        base_font_size = 52
 
                         frame_padding_h = 10
                         frame_offset_y = 0
@@ -457,6 +472,7 @@ def render_scenes_to_video(
                     
                     reduction_per_line = 4
                     text_offset_y = 0
+                # 横動画レイアウト
                 elif target_files:
                     # 【画像あり：以前の完璧なレイアウトを維持】
                     text_h_max = int(available_h * 0.5)
@@ -473,9 +489,10 @@ def render_scenes_to_video(
                     frame_name = "main_frame.png"
                 else:
                     # 【画像なし：今回調整したゆったりレイアウトを適用】
-                    text_h_max = available_h - 200
+                    # text_h_max = available_h - 200
+                    text_h_max = int(available_h * 0.75)
                     text_y_base = margin + 220
-                    text_w = main_area_w + 100
+                    text_w = main_area_w - 100
                     
                     base_font_size = 54
                     reduction_per_line = 6
@@ -518,7 +535,7 @@ def render_scenes_to_video(
                 if is_shorts:
                     summary_clip = summary_clip.with_position(("center", text_y_base))
                 else:
-                    summary_clip = summary_clip.with_position((-90, text_y_base - text_offset_y))
+                    summary_clip = summary_clip.with_position((0, text_y_base - text_offset_y))
                 if video_cross > 0:
                     summary_clip = summary_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
                 all_clips.append(summary_clip)
