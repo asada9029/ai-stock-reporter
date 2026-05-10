@@ -535,7 +535,7 @@ class ThumbnailGenerator:
             }}
             """
             
-            res = client.generate_content(prompt)
+            res = client.generate_content(prompt, use_search=False, model_role="lite")
             # JSON抽出
             import json
             m = re.search(r'\{.*\}', res, re.DOTALL)
