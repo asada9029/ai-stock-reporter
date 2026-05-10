@@ -5,30 +5,30 @@ from google.genai import types
 import time
 import json
 import re
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Literal, Optional, Any
 from datetime import datetime, timedelta, timezone
 
 
 load_dotenv()
+
+ModelRole = Literal["heavy", "lite"]
 
 
 class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
     # モデル定数
-    MODEL_FLASH = "gemini-3-flash-preview"           # バランス型
-    MODEL_PRO = "gemini-3-pro-preview"               # 最高品質
-    MODEL_TEST = "gemini-2.5-flash"             # テスト：激安・爆速版
+    MODEL_FLASH = "gemini-3-flash-preview"   # 重い処理（長文台本など）
+    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 軽量・低コスト（公式 Stable）
+    MODEL_PRO = "gemini-3-pro-preview"
+    MODEL_TEST = "gemini-2.5-flash"
 
     # クラス共有のクライアントインスタンス（無駄な初期化を防止）
     _shared_client = None
     
-    def __init__(self, model_name: str = MODEL_FLASH, enable_search: bool = True):
+    def __init__(self, enable_search: bool = True):
         """
         Args:
-            model_name: 使用するモデル
-                - gemini-3-flash-preview (推奨)
-                - gemini-3-pro-preview (高品質・高コスト)
             enable_search: Web Search機能を有効にするか
         """
         api_key = os.getenv("GEMINI_API_KEY")
@@ -40,7 +40,6 @@ class GeminiClient:
             GeminiClient._shared_client = genai.Client(api_key=api_key)
         
         self.client = GeminiClient._shared_client
-        self.model_name = model_name
         self.enable_search = enable_search
         
         # 設定の作成
@@ -49,70 +48,117 @@ class GeminiClient:
         ) if enable_search else None
         self.no_search_config = types.GenerateContentConfig(tools=[])
         
-        print(f"✅ Gemini クライアント初期化完了: {model_name} (Search: {enable_search})")
+        print(
+            f"✅ Gemini クライアント初期化完了 (Search: {enable_search}) "
+            f"[heavy={self.MODEL_FLASH}, lite={self.MODEL_FLASH_LITE}]"
+        )
+
+    @staticmethod
+    def _models_for_role(model_role: ModelRole) -> tuple[str, str]:
+        """(優先モデル, フォールバック)。"""
+        if model_role == "heavy":
+            return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_FLASH_LITE)
+        return (GeminiClient.MODEL_FLASH_LITE, GeminiClient.MODEL_FLASH)
+
+    @staticmethod
+    def _is_rate_or_quota_error(e: Exception) -> bool:
+        msg = str(e).lower()
+        if "429" in msg:
+            return True
+        if "quota" in msg:
+            return True
+        if "resource exhausted" in msg:
+            return True
+        if "rate" in msg and "limit" in msg:
+            return True
+        return False
+
+    @staticmethod
+    def _is_overloaded_error(e: Exception) -> bool:
+        msg = str(e).lower()
+        return "503" in msg or "overloaded" in msg or "unavailable" in msg
     
     def generate_content(
         self,
         prompt: str,
         max_retries: int = 10,
-        retry_delay: int = 30,  # デフォルトの待ち時間を短縮
-        use_search: bool = True
+        retry_delay: int = 30,
+        use_search: bool = True,
+        model_role: ModelRole = "lite",
     ) -> str:
         """
-        コンテンツ生成（リトライ機能付き）
-        
+        コンテンツ生成（リトライ + レート制限時のモデルフォールバック）
+
         Args:
             prompt: プロンプト
-            max_retries: 最大リトライ回数
-            retry_delay: リトライ間隔（秒）
+            max_retries: 各モデルあたりの最大リトライ回数
+            retry_delay: リトライ間隔の基数（秒）
             use_search: Web Searchを使用するか
-        
-        Returns:
-            str: 生成されたテキスト
+            model_role: heavy=長文台本等（3.0 Flash 優先）、lite=その他（3.1 Flash-Lite 優先）
         """
         config = self.search_config if use_search and self.enable_search else self.no_search_config
-        
-        for attempt in range(max_retries):
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=config
-                )
-                return response.text
-                
-            except Exception as e:
-                error_msg = str(e).lower()
-                
-                # 指数バックオフ的な待ち時間の計算 (30s, 60s, 120s...)
-                current_delay = retry_delay * (2 ** attempt)
-                
-                # 503 (Overloaded) または 429 (Rate Limit) の場合
-                if "503" in error_msg or "overloaded" in error_msg or "429" in error_msg or "quota" in error_msg:
-                    if attempt < max_retries - 1:
-                        print(f"⚠️ モデル混雑または制限中 (Attempt {attempt+1})。{current_delay}秒後にリトライ...")
+        primary, secondary = self._models_for_role(model_role)
+        models: List[str] = []
+        for m in (primary, secondary):
+            if m not in models:
+                models.append(m)
+
+        last_exc: Optional[Exception] = None
+        for mi, model in enumerate(models):
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config=config,
+                    )
+                    return response.text
+
+                except Exception as e:
+                    last_exc = e
+                    error_msg = str(e).lower()
+
+                    if "block" in error_msg:
+                        raise Exception(f"コンテンツがブロックされました: {e}") from e
+
+                    # レート制限・クォータ系 → もう一方のモデルを試す
+                    if self._is_rate_or_quota_error(e) and mi + 1 < len(models):
+                        print(
+                            f"⚠️ {model} がレート制限等のため、"
+                            f"フォールバック {models[mi + 1]} に切り替えます"
+                        )
+                        break
+
+                    current_delay = retry_delay * (2 ** attempt)
+                    retryable = (
+                        self._is_overloaded_error(e)
+                        or self._is_rate_or_quota_error(e)
+                    )
+                    if retryable and attempt < max_retries - 1:
+                        print(
+                            f"⚠️ {model} 混雑/制限 (試行 {attempt + 1}/{max_retries})。"
+                            f"{current_delay}秒後にリトライ..."
+                        )
                         time.sleep(current_delay)
                         continue
-                
-                # ブロックエラー
-                if "block" in error_msg:
-                    raise Exception(f"コンテンツがブロックされました: {e}")
-                
-                # その他のエラー
-                if attempt < max_retries - 1:
-                    print(f"⚠️ エラー発生: {e}。{current_delay}秒後にリトライ...")
-                    time.sleep(current_delay)
-                    continue
-                
-                raise Exception(f"Gemini API エラー: {e}")
-        
+
+                    if attempt < max_retries - 1:
+                        print(f"⚠️ エラー発生: {e}。{current_delay}秒後にリトライ...")
+                        time.sleep(current_delay)
+                        continue
+
+                    raise Exception(f"Gemini API エラー: {e}") from e
+
+        if last_exc:
+            raise Exception(f"Gemini API エラー: {last_exc}") from last_exc
         raise Exception("最大リトライ回数を超えました")
     
     def generate_content_with_search(
         self,
         prompt: str,
         max_retries: int = 8,
-        retry_delay: int = 90
+        retry_delay: int = 90,
+        model_role: ModelRole = "lite",
     ) -> Dict[str, Any]:
         """
         Web Searchを使用してコンテンツを生成（最重要メソッド）
@@ -140,7 +186,8 @@ class GeminiClient:
                 prompt=prompt,
                 max_retries=max_retries,
                 retry_delay=retry_delay,
-                use_search=True
+                use_search=True,
+                model_role=model_role,
             )
 
             result = {
@@ -162,7 +209,8 @@ class GeminiClient:
         self,
         prompt: str,
         max_retries: int = 5,
-        use_search: bool = False
+        use_search: bool = False,
+        model_role: ModelRole = "lite",
     ) -> dict:
         """
         JSON形式でコンテンツを生成
@@ -185,15 +233,20 @@ class GeminiClient:
 - 純粋なJSONのみを出力してください
 """
         
-        response = self.generate_content(json_prompt, max_retries, use_search=use_search)
-        
+        response = self.generate_content(
+            json_prompt, max_retries, use_search=use_search, model_role=model_role
+        )
+
         # JSONパース
-        return self._parse_json_response(response, prompt, max_retries)
+        return self._parse_json_response(
+            response, prompt, max_retries, use_search, model_role
+        )
     
     def generate_json_with_search(
         self,
         prompt: str,
-        max_retries: int = 5
+        max_retries: int = 5,
+        model_role: ModelRole = "lite",
     ) -> dict:
         """
         Web Searchを使用してJSON形式でコンテンツを生成
@@ -215,16 +268,22 @@ class GeminiClient:
 - Web検索で見つけた情報を必ず含めてください
 """
         
-        result = self.generate_content_with_search(json_prompt, max_retries)
-        
+        result = self.generate_content_with_search(
+            json_prompt, max_retries, model_role=model_role
+        )
+
         # JSONパース
-        return self._parse_json_response(result["text"], prompt, max_retries)
+        return self._parse_json_response(
+            result["text"], prompt, max_retries, use_search=True, model_role=model_role
+        )
     
     def _parse_json_response(
         self,
         response: str,
         original_prompt: str,
-        max_retries: int
+        max_retries: int,
+        use_search: bool = False,
+        model_role: ModelRole = "lite",
     ) -> dict:
         """
         レスポンスをJSONとしてパース（内部メソッド）
@@ -254,14 +313,24 @@ class GeminiClient:
             if max_retries > 0:
                 print(f"再試行します... (残り{max_retries}回)")
                 time.sleep(5)
-                return self.generate_json(original_prompt, max_retries - 1)
-            
+                if use_search:
+                    return self.generate_json_with_search(
+                        original_prompt, max_retries - 1, model_role=model_role
+                    )
+                return self.generate_json(
+                    original_prompt,
+                    max_retries - 1,
+                    use_search=False,
+                    model_role=model_role,
+                )
+
             raise Exception(f"JSONパースに失敗しました: {e}\nレスポンス: {response[:500]}")
     
     def search_news(
         self,
         query: str,
-        time_range: str = "12時間以内"
+        time_range: str = "12時間以内",
+        model_role: ModelRole = "lite",
     ) -> Dict[str, Any]:
         """
         ニュース検索（専用メソッド）
@@ -316,7 +385,7 @@ class GeminiClient:
 範囲外の記事が混ざる場合は、混ざらないように捨ててください（古い記事を返さないでください）。
 """
         
-        return self.generate_json_with_search(prompt)
+        return self.generate_json_with_search(prompt, model_role=model_role)
     
     def analyze_news(self, news_data: dict) -> dict:
         """ニュース分析"""
@@ -338,7 +407,7 @@ class GeminiClient:
 }}
 """
         
-        return self.generate_json(prompt)
+        return self.generate_json(prompt, model_role="lite")
     
     def generate_script(
         self,
@@ -381,7 +450,7 @@ class GeminiClient:
 それでは、昨夜の米国市場を見ていきましょう。（3秒間）
 """
         
-        return self.generate_content(prompt)
+        return self.generate_content(prompt, use_search=False, model_role="lite")
 
 
 # テスト用
@@ -391,10 +460,7 @@ if __name__ == "__main__":
     print("="*60 + "\n")
     
     # クライアント初期化
-    client = GeminiClient(
-        model_name=GeminiClient.MODEL_FLASH,
-        enable_search=True
-    )
+    client = GeminiClient(enable_search=True)
     
     # テスト1: 基本生成（検索なし）
     print("\n=== テスト1: 基本生成（検索なし） ===")
