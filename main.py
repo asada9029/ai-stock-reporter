@@ -176,16 +176,30 @@ def main():
         video_structure = structures.get(args.type)
         
         # データの集約
-        # shorts_a/b の場合は、直近の朝または夜のデータを流用する
+        # shorts_a/b は本編で保存済みの集約JSONを読む（Geminiの二重呼び出しを避ける）
         if "shorts" in args.type:
-            # 実行時間帯によって朝か夜か決める（5-12時は朝、それ以外は夜のデータを参照）
             now_hour = datetime.datetime.now(pytz.timezone('Asia/Tokyo')).hour
             video_category = "morning" if 5 <= now_hour < 12 else "evening"
         else:
             video_category = "morning" if "morning" in args.type else "evening"
-            
-        aggregator = DataAggregator()
-        analysis_data = aggregator.aggregate_all_data(video_type=video_category)
+
+        data_dir = Path("data/collected_data")
+        if "shorts" in args.type:
+            agg_files = sorted(
+                data_dir.glob(f"aggregated_data_{video_category}_*.json"),
+                reverse=True,
+            )
+            if not agg_files:
+                raise RuntimeError(
+                    f"ショート用の集約データがありません: {data_dir}/aggregated_data_{video_category}_*.json "
+                    "（本編を先に同じジョブ内で実行するか、--no-cleanup で集約ファイルを残してください）"
+                )
+            with open(agg_files[0], "r", encoding="utf-8") as f:
+                analysis_data = json.load(f)
+            print(f"📂 ショート: 集約データを再利用しました → {agg_files[0]}")
+        else:
+            aggregator = DataAggregator()
+            analysis_data = aggregator.aggregate_all_data(video_type=video_category)
         
         # 次の配信予定を計算して分析データに含める（台本用）
         next_upload = get_next_market_open(market_schedule_type)
@@ -202,8 +216,9 @@ def main():
         }
 
         # 最新の集約データパスを取得
-        data_dir = Path("data/collected_data")
-        data_files = sorted(data_dir.glob(f"aggregated_data_{video_category}_*.json"), reverse=True)
+        data_files = sorted(
+            data_dir.glob(f"aggregated_data_{video_category}_*.json"), reverse=True
+        )
         latest_data_path = str(data_files[0]) if data_files else None
 
         # 動画の合成
