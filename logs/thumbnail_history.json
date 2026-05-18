@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-03-03T07:39:50.427060",
-    "video_type": "morning_video",
-    "title": "【貯金消失】ISM70.5。インフレ再加速"
-  },
-  {
     "date": "2026-03-03T17:39:59.510895",
     "video_type": "evening_video",
     "title": "【激震】高市減税と原油100ドル。勝つ秘策"
@@ -498,5 +493,10 @@
     "date": "2026-05-18T06:48:23.827725",
     "video_type": "morning_video",
     "title": "【市場の掟破り】資金流出の正体"
+  },
+  {
+    "date": "2026-05-18T21:00:23.566539",
+    "video_type": "evening_video",
+    "title": "【金利急上昇】市場が震えた日"
   }
 ]
