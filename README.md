@@ -50,9 +50,16 @@ pip install -r requirements.txt
 `.env` ファイルを作成し、以下の情報を設定してください。
 ```env
 GEMINI_API_KEY=your_gemini_api_key
+# 任意: Web Search（ニュース収集）のみ別キー（有料枠）にする場合
+# GEMINI_API_KEY_SEARCH=your_paid_gemini_api_key
 YOUTUBE_API_KEY=your_youtube_api_key
 # その他必要な環境変数
 ```
+
+**Gemini モデル・APIキー方針**
+- ニュース検索（Google Search）: `gemini-3.5-flash` → `gemini-3.1-flash-lite` + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
+- それ以外（台本・サムネ・JSON 等）: `gemini-3.5-flash` → 制限時 `gemini-3.1-flash-lite` + **`GEMINI_API_KEY`（無料枠）**
+- GitHub Actions: Repository secrets に `GEMINI_API_KEY` と `GEMINI_API_KEY_SEARCH` の両方を登録
 
 ## 🚀 実行手順
 

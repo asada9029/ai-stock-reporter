@@ -11,6 +11,7 @@ import re # 追加
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from src.data_collection.previous_videos import load_latest_metadata, save_video_metadata
 from src.data_collection.ir_movement_analyzer import IRMovementAnalyzer
+from src.data_collection.news_visual_enricher import NewsVisualEnricher
 
 class DataAggregator:
     def __init__(self, output_dir="data/collected_data"):
@@ -21,6 +22,37 @@ class DataAggregator:
         self.ir_collector = IrEventCollector()
         self.table_image_generator = TableImageGenerator()
         self.stock_chart_capturer = StockChartCapturer() # 追加
+        self.output_base_dir = os.path.join("output", "collected")
+        self.news_visual_enricher = NewsVisualEnricher(
+            gemini_client=self.news_collector.gemini_client,
+            chart_capturer=self.stock_chart_capturer,
+            output_base_dir=self.output_base_dir,
+        )
+
+    def _enrich_news_visuals(
+        self,
+        news_list: list,
+        video_type: str,
+        *,
+        tag: str = "news",
+        subdir: str = "news_visuals",
+    ) -> int:
+        """OG画像（優先）または関連銘柄チャートを visual_image_path に付与。"""
+        if not news_list:
+            return 0
+        print(f"  🖼️ ニュースビジュアル付与を開始 ({len(news_list)} 件)...")
+        try:
+            n = self.news_visual_enricher.enrich_list(
+                news_list, video_type, subdir=subdir, tag=tag
+            )
+        except Exception as e:
+            print(f"  ⚠️ ニュースビジュアル付与をスキップ（集約は継続）: {e}")
+            return 0
+        if n:
+            print(f"  ✅ ニュースビジュアル {n} 件（OG or チャート）")
+        else:
+            print("  ⚠️ ニュースビジュアルは0件（OG/チャートとも取得なし）")
+        return n
 
     def _get_companies_for_sector(self, sector_name: str, num_companies: int = 3) -> list[dict]: # 戻り値の型を修正
         """
@@ -130,7 +162,8 @@ class DataAggregator:
         
         # 注目ニュースをルート直下に移動
         aggregated_data["attention_news"] = raw_data.get("attention_news", [])
-        
+        self._enrich_news_visuals(aggregated_data["attention_news"], video_type)
+
         # 主要指数のみを market_indices として保持 (旧 market_and_sector)
         aggregated_data["market_indices"] = raw_data.get("market_indices", {})
         
@@ -410,7 +443,13 @@ class DataAggregator:
                 us_outlook_query = "今夜の米国市場 注目指標 決算 経済イベント 予想 日本市場への影響 明日の世界的な重要経済スケジュール"
                 us_outlook_data = self.news_collector.search_news(query=us_outlook_query, num_results=5)
                 aggregated_data["us_tonight_outlook"] = us_outlook_data
-                print("今夜の米国市場見通しの取得完了。")
+                n_out = self._enrich_news_visuals(
+                    aggregated_data["us_tonight_outlook"],
+                    video_type,
+                    tag="outlook",
+                    subdir="outlook_visuals",
+                )
+                print(f"今夜の米国市場見通しの取得完了（ビジュアル {n_out} 件）。")
             except Exception as e:
                 print(f"今夜の米国市場見通しの取得中にエラー: {e}")
                 aggregated_data["us_tonight_outlook"] = []
