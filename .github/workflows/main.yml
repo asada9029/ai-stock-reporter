@@ -83,6 +83,7 @@ jobs:
       - name: Run Main Video Pipeline and Upload
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_SEARCH: ${{ secrets.GEMINI_API_KEY_SEARCH }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
@@ -93,6 +94,7 @@ jobs:
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.video_type == 'morning_video' || github.event.inputs.video_type == 'evening_video'))
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_SEARCH: ${{ secrets.GEMINI_API_KEY_SEARCH }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
@@ -104,6 +106,7 @@ jobs:
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.video_type == 'morning_video' || github.event.inputs.video_type == 'evening_video'))
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_SEARCH: ${{ secrets.GEMINI_API_KEY_SEARCH }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
           DEBUG: "False"
           TZ: 'Asia/Tokyo'

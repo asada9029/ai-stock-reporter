@@ -11,54 +11,86 @@ from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
-ModelRole = Literal["heavy", "lite"]
+ModelRole = Literal["heavy", "lite", "search"]
 
 
 class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
     # モデル定数
-    MODEL_FLASH = "gemini-3-flash-preview"   # 重い処理（長文台本など）
-    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 軽量・低コスト（公式 Stable）
+    MODEL_FLASH = "gemini-3.5-flash"           # 通常生成・Web Search（優先）
+    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 通常生成（フォールバック）
+    MODEL_SEARCH = "gemini-3.5-flash"          # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
     MODEL_PRO = "gemini-3-pro-preview"
     MODEL_TEST = "gemini-2.5-flash"
 
-    # クラス共有のクライアントインスタンス（無駄な初期化を防止）
-    _shared_client = None
-    
+    # テキスト用 / Search用で API キーを分離可能（Search のみ有料キーを使う場合）
+    _shared_text_client = None
+    _shared_search_client = None
+
+    @classmethod
+    def _text_api_key(cls) -> str:
+        key = os.getenv("GEMINI_API_KEY")
+        if not key:
+            raise ValueError("GEMINI_API_KEY が設定されていません")
+        return key
+
+    @classmethod
+    def _search_api_key(cls) -> str:
+        # 3.5 の Grounding は有料枠のみ。本番は GEMINI_API_KEY_SEARCH を推奨
+        key = os.getenv("GEMINI_API_KEY_SEARCH") or cls._text_api_key()
+        if not os.getenv("GEMINI_API_KEY_SEARCH"):
+            print(
+                "⚠️ GEMINI_API_KEY_SEARCH 未設定: "
+                "3.5 Flash の Web Search は有料枠が必要なため、検索が失敗する可能性があります"
+            )
+        return key
+
+    @classmethod
+    def _get_text_client(cls) -> genai.Client:
+        if cls._shared_text_client is None:
+            cls._shared_text_client = genai.Client(api_key=cls._text_api_key())
+        return cls._shared_text_client
+
+    @classmethod
+    def _get_search_client(cls) -> genai.Client:
+        if cls._shared_search_client is None:
+            cls._shared_search_client = genai.Client(api_key=cls._search_api_key())
+        return cls._shared_search_client
+
     def __init__(self, enable_search: bool = True):
         """
         Args:
             enable_search: Web Search機能を有効にするか
         """
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY が設定されていません")
-        
-        # クライアントのシングルトン化
-        if GeminiClient._shared_client is None:
-            GeminiClient._shared_client = genai.Client(api_key=api_key)
-        
-        self.client = GeminiClient._shared_client
+        self._get_text_client()
+        self._get_search_client()
+        self.client = self._get_text_client()
         self.enable_search = enable_search
-        
+
         # 設定の作成
         self.search_config = types.GenerateContentConfig(
             tools=[types.Tool(google_search=types.GoogleSearch())]
         ) if enable_search else None
         self.no_search_config = types.GenerateContentConfig(tools=[])
-        
+
+        search_key_mode = (
+            "専用キー(GEMINI_API_KEY_SEARCH)"
+            if os.getenv("GEMINI_API_KEY_SEARCH")
+            else "GEMINI_API_KEYと共通"
+        )
         print(
             f"✅ Gemini クライアント初期化完了 (Search: {enable_search}) "
-            f"[heavy={self.MODEL_FLASH}, lite={self.MODEL_FLASH_LITE}]"
+            f"[text={self.MODEL_FLASH}→{self.MODEL_FLASH_LITE}, "
+            f"search={self.MODEL_SEARCH}→{self.MODEL_FLASH_LITE}, key={search_key_mode}]"
         )
 
     @staticmethod
-    def _models_for_role(model_role: ModelRole) -> tuple[str, str]:
-        """(優先モデル, フォールバック)。"""
-        if model_role == "heavy":
-            return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_FLASH_LITE)
-        return (GeminiClient.MODEL_FLASH_LITE, GeminiClient.MODEL_FLASH)
+    def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
+        """使用するモデル列（優先順）。"""
+        if use_search:
+            return (GeminiClient.MODEL_SEARCH, GeminiClient.MODEL_FLASH_LITE)
+        return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_FLASH_LITE)
 
     @staticmethod
     def _is_rate_or_quota_error(e: Exception) -> bool:
@@ -77,6 +109,14 @@ class GeminiClient:
     def _is_overloaded_error(e: Exception) -> bool:
         msg = str(e).lower()
         return "503" in msg or "overloaded" in msg or "unavailable" in msg
+
+    @staticmethod
+    def _is_quota_exhausted(e: Exception) -> bool:
+        """日次クォータ等。長時間リトライしても回復しない。"""
+        msg = str(e).lower()
+        return "resource_exhausted" in msg or (
+            "quota" in msg and ("exceeded" in msg or "limit" in msg)
+        )
     
     def generate_content(
         self,
@@ -94,20 +134,21 @@ class GeminiClient:
             max_retries: 各モデルあたりの最大リトライ回数
             retry_delay: リトライ間隔の基数（秒）
             use_search: Web Searchを使用するか
-            model_role: heavy=長文台本等（3.0 Flash 優先）、lite=その他（3.1 Flash-Lite 優先）
+            model_role: heavy/lite/search とも 3.5 Flash→3.1 Flash-Lite（search は有料キー）
         """
         config = self.search_config if use_search and self.enable_search else self.no_search_config
-        primary, secondary = self._models_for_role(model_role)
-        models: List[str] = []
-        for m in (primary, secondary):
-            if m not in models:
-                models.append(m)
+        search_active = use_search and self.enable_search
+        models = list(self._models_for_role(model_role, use_search=search_active))
+
+        api_client = (
+            self._get_search_client() if search_active else self._get_text_client()
+        )
 
         last_exc: Optional[Exception] = None
         for mi, model in enumerate(models):
             for attempt in range(max_retries):
                 try:
-                    response = self.client.models.generate_content(
+                    response = api_client.models.generate_content(
                         model=model,
                         contents=prompt,
                         config=config,
@@ -121,19 +162,24 @@ class GeminiClient:
                     if "block" in error_msg:
                         raise Exception(f"コンテンツがブロックされました: {e}") from e
 
-                    # レート制限・クォータ系 → もう一方のモデルを試す
+                    # クォータ切れ: 別モデルへ切替、なければ即失敗（長時間リトライしない）
+                    if self._is_quota_exhausted(e):
+                        print(f"⚠️ {model} クォータ超過: {e}")
+                        if mi + 1 < len(models):
+                            print(f"   → フォールバック {models[mi + 1]} に切り替えます")
+                            break
+                        raise Exception(f"Gemini API クォータ超過: {e}") from e
+
+                    # RPM 等のレート制限 → フォールバック可能なら次モデルへ
                     if self._is_rate_or_quota_error(e) and mi + 1 < len(models):
                         print(
                             f"⚠️ {model} がレート制限等のため、"
-                            f"フォールバック {models[mi + 1]} に切り替えます"
+                            f"フォールバック {models[mi + 1]} に切り替えます ({e})"
                         )
                         break
 
                     current_delay = retry_delay * (2 ** attempt)
-                    retryable = (
-                        self._is_overloaded_error(e)
-                        or self._is_rate_or_quota_error(e)
-                    )
+                    retryable = self._is_overloaded_error(e)
                     if retryable and attempt < max_retries - 1:
                         print(
                             f"⚠️ {model} 混雑/制限 (試行 {attempt + 1}/{max_retries})。"
@@ -156,9 +202,9 @@ class GeminiClient:
     def generate_content_with_search(
         self,
         prompt: str,
-        max_retries: int = 8,
-        retry_delay: int = 90,
-        model_role: ModelRole = "lite",
+        max_retries: int = 3,
+        retry_delay: int = 20,
+        model_role: ModelRole = "search",
     ) -> Dict[str, Any]:
         """
         Web Searchを使用してコンテンツを生成（最重要メソッド）
@@ -187,7 +233,7 @@ class GeminiClient:
                 max_retries=max_retries,
                 retry_delay=retry_delay,
                 use_search=True,
-                model_role=model_role,
+                model_role="search",
             )
 
             result = {
@@ -245,8 +291,8 @@ class GeminiClient:
     def generate_json_with_search(
         self,
         prompt: str,
-        max_retries: int = 5,
-        model_role: ModelRole = "lite",
+        max_retries: int = 3,
+        model_role: ModelRole = "search",
     ) -> dict:
         """
         Web Searchを使用してJSON形式でコンテンツを生成
@@ -330,7 +376,7 @@ class GeminiClient:
         self,
         query: str,
         time_range: str = "12時間以内",
-        model_role: ModelRole = "lite",
+        model_role: ModelRole = "search",
     ) -> Dict[str, Any]:
         """
         ニュース検索（専用メソッド）
@@ -373,12 +419,19 @@ class GeminiClient:
       "summary": "要約",
       "source": "情報源",
       "date": "日付",
-      "url": "URL（あれば）"
+      "url": "URL（あれば）",
+      "primary_ticker": "7203.T または NVDA など（該当なしは null）",
+      "company_name": "主役企業名（該当なしは空文字）"
     }}
   ],
   "total_count": 件数,
   "search_timestamp": "検索時刻"
 }}
+
+【銘柄推定ルール】
+- ニュースの主役が1社に絞れるときだけ primary_ticker を付ける。指数・政策・宏观のみなら null。
+- 日本株は 7203.T 形式、米国株は NVDA / AAPL 形式。
+- 複数社なら最も中心の1社のみ。
 
 重要な情報のみを抽出し、信頼性の高い情報源を優先してください。
 【超重要】found_articles の各要素の "date" は必ず「対象開始（JST）〜現在時刻（JST）」の範囲に入っているものだけを返してください。
