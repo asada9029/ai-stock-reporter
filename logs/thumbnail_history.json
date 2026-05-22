@@ -1,40 +1,5 @@
 [
   {
-    "date": "2026-03-02T18:30:00.785561",
-    "video_type": "evening_video",
-    "title": "【緊急】中東開戦と暴落、今すぐ逃げないと損"
-  },
-  {
-    "date": "2026-03-03T07:39:50.427060",
-    "video_type": "morning_video",
-    "title": "【貯金消失】ISM70.5。インフレ再加速"
-  },
-  {
-    "date": "2026-03-03T17:39:59.510895",
-    "video_type": "evening_video",
-    "title": "【激震】高市減税と原油100ドル。勝つ秘策"
-  },
-  {
-    "date": "2026-03-04T07:15:16.928267",
-    "video_type": "morning_video",
-    "title": "【不意打ち】全品15%加算で生活が破綻する"
-  },
-  {
-    "date": "2026-03-04T16:41:43.260489",
-    "video_type": "evening_video",
-    "title": "【世紀の買場】2600円安で拾う！資産爆増の正体"
-  },
-  {
-    "date": "2026-03-05T06:22:44.461517",
-    "video_type": "morning_video",
-    "title": "【目標260ドル】エヌビディアで今こそ稼ぐ"
-  },
-  {
-    "date": "2026-03-06T06:26:55.525769",
-    "video_type": "morning_video",
-    "title": "【富の独占】AI市場15兆円！勝機を逃すな"
-  },
-  {
     "date": "2026-03-06T17:06:43.406954",
     "video_type": "evening_video",
     "title": "【大逆転の波】日経平均底打ち！今夜の発表で爆益を狙え"
@@ -413,5 +378,125 @@
     "date": "2026-05-01T05:52:55.695813",
     "video_type": "morning_video",
     "title": "【ピンタレスト20%爆伸】米株7209勝者の条件"
+  },
+  {
+    "date": "2026-05-01T17:48:15.293300",
+    "video_type": "evening_video",
+    "title": "【三菱商事：急騰】米シェール参入。利益37%増の衝撃"
+  },
+  {
+    "date": "2026-05-04T05:35:46.443869",
+    "video_type": "morning_video",
+    "title": "【S&P:7230】来週施行！トランプ関税25%"
+  },
+  {
+    "date": "2026-05-05T06:28:29.042154",
+    "video_type": "morning_video",
+    "title": "【Apple：17兆円】史上最大。相場の救世主か"
+  },
+  {
+    "date": "2026-05-06T05:58:33.858611",
+    "video_type": "morning_video",
+    "title": "【S&P:7259】史上最高値。原油安で強気転換"
+  },
+  {
+    "date": "2026-05-07T06:06:12.386046",
+    "video_type": "morning_video",
+    "title": "【S&P:7365】中東和平。歴史的高値で相場激変"
+  },
+  {
+    "date": "2026-05-07T18:34:05.187200",
+    "video_type": "evening_video",
+    "title": "【日経62833円】過去最大の3320円高。伝説の記録更新"
+  },
+  {
+    "date": "2026-05-08T06:01:06.589774",
+    "video_type": "morning_video",
+    "title": "【Arm：10%急落】需要停滞。半導体は罠か"
+  },
+  {
+    "date": "2026-05-08T17:43:14.908249",
+    "video_type": "evening_video",
+    "title": "【DMG森精機：急伸】防衛・航空の巨額受注が判明"
+  },
+  {
+    "date": "2026-05-11T06:46:20.855257",
+    "video_type": "morning_video",
+    "title": "【S&P7398】買いの熱狂と死角"
+  },
+  {
+    "date": "2026-05-11T21:03:28.266539",
+    "video_type": "evening_video",
+    "title": "【S&P500：7398】強気相場の死角"
+  },
+  {
+    "date": "2026-05-12T07:19:10.217900",
+    "video_type": "morning_video",
+    "title": "【S&P500：7412】強気一色の裏で囁かれる異変"
+  },
+  {
+    "date": "2026-05-12T19:36:24.516381",
+    "video_type": "evening_video",
+    "title": "【S&P500急変】強気相場の脆さ"
+  },
+  {
+    "date": "2026-05-13T19:43:39.587722",
+    "video_type": "evening_video",
+    "title": "【NVIDIA決算】AI相場の終焉か"
+  },
+  {
+    "date": "2026-05-14T07:25:07.664624",
+    "video_type": "morning_video",
+    "title": "【半導体決算】市場の常識を覆す異常な強さ"
+  },
+  {
+    "date": "2026-05-14T19:31:48.006393",
+    "video_type": "evening_video",
+    "title": "【テスラ急騰】市場の空売り網が崩壊"
+  },
+  {
+    "date": "2026-05-15T07:12:06.090218",
+    "video_type": "morning_video",
+    "title": "【市場の異常】金利急騰で投資家が狼狽"
+  },
+  {
+    "date": "2026-05-15T19:46:09.594118",
+    "video_type": "evening_video",
+    "title": "【半導体・急落】逃げ遅れは命取り"
+  },
+  {
+    "date": "2026-05-18T06:48:23.827725",
+    "video_type": "morning_video",
+    "title": "【市場の掟破り】資金流出の正体"
+  },
+  {
+    "date": "2026-05-18T21:00:23.566539",
+    "video_type": "evening_video",
+    "title": "【金利急上昇】市場が震えた日"
+  },
+  {
+    "date": "2026-05-20T07:20:55.052928",
+    "video_type": "morning_video",
+    "title": "【市場の臨界点】S&P500が突きつける拒絶反応"
+  },
+  {
+    "date": "2026-05-21T07:39:20.512856",
+    "video_type": "morning_video",
+    "title": "【半導体巨人が暴落】投資家が直視すべき現実"
+  },
+  {
+    "date": "2026-05-21T20:36:16.041675",
+    "video_type": "evening_video",
+    "title": "【雇用統計の悪魔】市場が隠した暴落の予兆"
+  },
+  {
+    "date": "2026-05-22T07:33:29.196091",
+    "video_type": "morning_video",
+    "title": "【S&P500の変調】最高値圏で投資家が抱く違和感"
+  },
+  {
+    "date": "2026-05-22T19:18:41.636224",
+    "video_type": "evening_video",
+    "title": "【歴史的転換】米国株の資金大移動が始動"
   }
 ]
