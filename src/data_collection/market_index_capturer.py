@@ -10,7 +10,18 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-from typing import Dict, Optional
+from typing import Dict, List, Optional
+
+# 銘柄チャートと同様のクエリ（ローソク足・出来高・移動平均）
+CHART_PAGE_QUERY = (
+    "?frm=dly&trm=6m&scl=stndrd&styl=cndl&evnts=volume&ovrIndctr=sma%2Cmma%2Clma"
+)
+
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
 
 class MarketIndexCapturer:
     """
@@ -20,7 +31,11 @@ class MarketIndexCapturer:
 
     # 各市場のYahoo Finance URLと表示名とセレクタ情報
     MARKET_INFO = {
-        "NIKKEI": {"ticker": "998407.O", "name": "日経平均", "url": "https://finance.yahoo.co.jp/quote/998407.O/chart",
+        "NIKKEI": {
+                   "ticker": "998407.O",
+                   "yfinance_tickers": ["^N225", "998407.O"],
+                   "name": "日経平均",
+                   "url": "https://finance.yahoo.co.jp/quote/998407.O/chart",
                    "selectors": {
                        "value_area": ".PriceBoard__priceInformation__78Tl",
                        "current_price": ".PriceBoard__price__1V0k .StyledNumber__value__3rXW",
@@ -66,7 +81,9 @@ class MarketIndexCapturer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         # GitHub Actions の headless 実行はローカルより遅いことがあるため、待機時間は長めを既定値にする
-        self.page_wait_timeout = int(os.getenv("MARKET_CHART_WAIT_TIMEOUT_SEC", "90"))
+        self.chart_selector_wait_sec = int(
+            os.getenv("MARKET_CHART_SELECTOR_WAIT_SEC", "25")
+        )
         self.chart_render_wait_sec = int(os.getenv("MARKET_CHART_RENDER_WAIT_SEC", "10"))
         self.chart_min_file_bytes = int(os.getenv("MARKET_CHART_MIN_FILE_BYTES", "10000"))
         self.chart_selectors = [
@@ -76,15 +93,16 @@ class MarketIndexCapturer:
             "canvas",
         ]
 
-        # Selenium WebDriverのオプション設定
         self.chrome_options = Options()
-        self.chrome_options.add_argument('--headless')
-        self.chrome_options.add_argument('--window-size=1600,900') # チャートが見える適切なサイズ
-        self.chrome_options.add_argument('--disable-gpu')
-        self.chrome_options.add_argument('--no-sandbox') # Dockerなどで実行する場合に必要
-        self.chrome_options.add_argument('--disable-dev-shm-usage') # Dockerなどで実行する場合に必要
-        
-        # WebDriverManagerで自動的にドライバーをダウンロード・設定
+        self.chrome_options.add_argument("--headless=new")
+        self.chrome_options.add_argument("--window-size=1280,1200")
+        self.chrome_options.add_argument("--no-sandbox")
+        self.chrome_options.add_argument("--disable-dev-shm-usage")
+        self.chrome_options.add_argument("--disable-gpu")
+        self.chrome_options.add_argument(
+            f"--user-agent={os.getenv('MARKET_CHART_USER_AGENT', DEFAULT_USER_AGENT)}"
+        )
+
         self.service = Service(ChromeDriverManager().install())
 
     def _get_driver(self):
@@ -129,6 +147,40 @@ class MarketIndexCapturer:
             print(f"🧾 失敗調査用ファイルを保存しました: {base}.[png|html|txt]")
         except Exception:
             pass
+
+    @staticmethod
+    def _chart_page_url(market_info: Dict) -> str:
+        base = market_info["url"].split("?")[0]
+        return base + CHART_PAGE_QUERY
+
+    @staticmethod
+    def _yfinance_tickers(market_info: Dict) -> List[str]:
+        return list(market_info.get("yfinance_tickers") or [market_info["ticker"]])
+
+    def _get_yfinance_data_for_market(self, market_info: Dict) -> Optional[Dict]:
+        """yfinance シンボルを優先順に試す（日経は ^N225 → 998407.O）。"""
+        tickers = self._yfinance_tickers(market_info)
+        for i, ticker in enumerate(tickers):
+            data = self._get_yfinance_data(ticker)
+            if data:
+                if i > 0:
+                    print(f"    ↪ yfinance サブシンボルで取得成功: {ticker}")
+                return data
+        return None
+
+    def _find_chart_element(self, driver) -> tuple[Optional[object], Optional[str]]:
+        """セレクタごとに短い待機でチャート要素を探す。"""
+        for selector in self.chart_selectors:
+            try:
+                wait = WebDriverWait(driver, self.chart_selector_wait_sec)
+                elem = wait.until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, selector))
+                )
+                if elem:
+                    return elem, selector
+            except TimeoutException:
+                continue
+        return None, None
 
     def _get_yfinance_data(self, ticker: str) -> Optional[Dict]:
         """
@@ -185,7 +237,7 @@ class MarketIndexCapturer:
 
         # ドル円の場合はyfinanceで取得し、Seleniumはスキップ
         if market_key == "USDJPY":
-            yfinance_data = self._get_yfinance_data(market_info["ticker"])
+            yfinance_data = self._get_yfinance_data_for_market(market_info)
             if yfinance_data:
                 return {
                     "market": market_key,
@@ -202,10 +254,13 @@ class MarketIndexCapturer:
         # Actions 環境では Yahoo 側の同意画面/ブロック等で Selenium が失敗することがあるため、
         # 数値は yfinance でのフォールバックを用意しておく。
         def _fallback_yfinance(note: str) -> Optional[Dict]:
-            yfinance_data = self._get_yfinance_data(market_info["ticker"])
+            yfinance_data = self._get_yfinance_data_for_market(market_info)
             if not yfinance_data:
                 return None
-            print(f"    ↪ yfinance フォールバックで数値取得: {market_info['ticker']} ({note})")
+            print(
+                f"    ↪ yfinance フォールバックで数値取得: "
+                f"{self._yfinance_tickers(market_info)} ({note})"
+            )
             return {
                 "market": market_key,
                 "name": market_info["name"],
@@ -223,30 +278,21 @@ class MarketIndexCapturer:
         change_selector = selectors["change"]
         change_percent_selector = selectors["change_percent"]
 
+        chart_url = self._chart_page_url(market_info)
         driver = self._get_driver()
+        used_selector = None
         try:
-            print(f"Accessing {market_info['name']} chart page: {market_info['url']}")
-            driver.get(market_info['url'])
+            print(f"Accessing {market_info['name']} chart page: {chart_url}")
+            driver.get(chart_url)
+            time.sleep(2)
 
-            wait = WebDriverWait(driver, self.page_wait_timeout)
-            chart_elem = None
-            used_selector = chart_selector
-            for selector in self.chart_selectors:
-                try:
-                    chart_elem = wait.until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, selector))
-                    )
-                    if chart_elem:
-                        used_selector = selector
-                        print(f"  - チャート要素: {selector}")
-                        break
-                except TimeoutException:
-                    continue
-
+            chart_elem, used_selector = self._find_chart_element(driver)
             if not chart_elem:
                 raise TimeoutException(
-                    f"chart element not found (tried {self.chart_selectors})"
+                    f"chart element not found (tried {self.chart_selectors}, "
+                    f"wait={self.chart_selector_wait_sec}s each)"
                 )
+            print(f"  - チャート要素: {used_selector}")
 
             time.sleep(self.chart_render_wait_sec)
             driver.execute_script(
@@ -311,17 +357,22 @@ class MarketIndexCapturer:
 
         except TimeoutException as e:
             note = (
-                "TimeoutException while waiting for selector.\n"
-                f"market={market_key} selector={chart_selector}\n"
+                "TimeoutException while waiting for chart.\n"
+                f"market={market_key} url={chart_url}\n"
+                f"selectors={self.chart_selectors}\n"
+                f"last_selector={used_selector}\n"
                 f"exception={repr(e)}"
             )
-            print(f"Error: Timeout for {market_info['name']} (selector={chart_selector})")
+            print(
+                f"Error: Timeout for {market_info['name']} "
+                f"(selectors={self.chart_selectors})"
+            )
             self._dump_failure_artifacts(market_key, driver, note)
             return _fallback_yfinance("timeout") or None
         except WebDriverException as e:
             note = (
                 "WebDriverException.\n"
-                f"market={market_key} selector={chart_selector}\n"
+                f"market={market_key} url={chart_url}\n"
                 f"exception={repr(e)}"
             )
             print(f"Error: WebDriver error for {market_info['name']}: {repr(e)}")
@@ -330,7 +381,7 @@ class MarketIndexCapturer:
         except Exception as e:
             note = (
                 "Unhandled exception.\n"
-                f"market={market_key} selector={chart_selector}\n"
+                f"market={market_key} url={chart_url}\n"
                 f"type={type(e)}\n"
                 f"exception={repr(e)}"
             )
