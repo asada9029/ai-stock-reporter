@@ -68,6 +68,13 @@ class MarketIndexCapturer:
         # GitHub Actions の headless 実行はローカルより遅いことがあるため、待機時間は長めを既定値にする
         self.page_wait_timeout = int(os.getenv("MARKET_CHART_WAIT_TIMEOUT_SEC", "90"))
         self.chart_render_wait_sec = int(os.getenv("MARKET_CHART_RENDER_WAIT_SEC", "10"))
+        self.chart_min_file_bytes = int(os.getenv("MARKET_CHART_MIN_FILE_BYTES", "10000"))
+        self.chart_selectors = [
+            'div[class*="InteractiveChart__"]',
+            'div[class*="_InteractiveChart_"]',
+            "#chart",
+            "canvas",
+        ]
 
         # Selenium WebDriverのオプション設定
         self.chrome_options = Options()
@@ -220,19 +227,49 @@ class MarketIndexCapturer:
         try:
             print(f"Accessing {market_info['name']} chart page: {market_info['url']}")
             driver.get(market_info['url'])
-            # Actions では表示が遅い/別DOMになることがあるので少し長めに待つ
-            WebDriverWait(driver, self.page_wait_timeout).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, chart_selector))
-            )
-            
-            # チャートの描画完了を待つために少し待機
-            time.sleep(self.chart_render_wait_sec)
 
-            # チャート部分のスクリーンショット
-            chart_elem = driver.find_element(By.CSS_SELECTOR, chart_selector)
+            wait = WebDriverWait(driver, self.page_wait_timeout)
+            chart_elem = None
+            used_selector = chart_selector
+            for selector in self.chart_selectors:
+                try:
+                    chart_elem = wait.until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, selector))
+                    )
+                    if chart_elem:
+                        used_selector = selector
+                        print(f"  - チャート要素: {selector}")
+                        break
+                except TimeoutException:
+                    continue
+
+            if not chart_elem:
+                raise TimeoutException(
+                    f"chart element not found (tried {self.chart_selectors})"
+                )
+
+            time.sleep(self.chart_render_wait_sec)
+            driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});", chart_elem
+            )
+            time.sleep(1)
+
             filename = f"{market_key.lower()}_chart_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             filepath = os.path.join(self.output_dir, filename)
             chart_elem.screenshot(filepath)
+
+            if os.path.exists(filepath):
+                file_size = os.path.getsize(filepath)
+                if file_size < self.chart_min_file_bytes:
+                    print(
+                        f"⚠️ チャート画像が小さすぎます ({file_size} bytes)。"
+                        f"取得失敗とみなします。"
+                    )
+                    os.remove(filepath)
+                    raise TimeoutException(
+                        f"chart screenshot too small ({file_size} bytes)"
+                    )
+
             print(f"Chart image saved for {market_info['name']}: {filepath}")
 
             # 数値データのスクレイピング

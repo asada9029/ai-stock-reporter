@@ -98,6 +98,21 @@ def compose_video_from_analysis(
         audio_dir = Path("data/audio")
         audio_dir.mkdir(parents=True, exist_ok=True)
 
+        def _align_segments_to_count(s: str, count: int) -> List[str]:
+            """読み上げ分割数に合わせて字幕用テキストを割り当てる。"""
+            if count <= 0:
+                return []
+            if count == 1:
+                return [s]
+            n = len(s)
+            parts: List[str] = []
+            for i in range(count):
+                start = n * i // count
+                end = n * (i + 1) // count
+                chunk = s[start:end].strip()
+                parts.append(chunk if chunk else s[start:end])
+            return parts
+
         def _split_text_segments(s: str, max_c: int):
             if not s: return []
             s = s.strip()
@@ -142,26 +157,35 @@ def compose_video_from_analysis(
         # --- シーンごとの音声生成と時間計算 ---
         for i, sc in enumerate(scenes):
             idx = sc.get("scene", i + 1)
-            text = sc.get("text", "")
+            display_text = sc.get("text", "")
+            speech_text = sc.get("speech_text") or display_text
             padding_before = float(sc.get("padding_before", 0.3))
             padding_after = float(sc.get("padding_after", 0.3))
             max_chars = int(sc.get("max_chars_per_segment", 50))
 
-            segments_texts = _split_text_segments(text, max_chars)
+            speech_segments = _split_text_segments(speech_text, max_chars)
+            display_segments = _split_text_segments(display_text, max_chars)
+            if len(display_segments) != len(speech_segments):
+                display_segments = _align_segments_to_count(
+                    display_text, len(speech_segments)
+                )
+
             segments = []
             
             cursor = padding_before 
             scene_audio_only_duration = 0.0
 
-            for j, seg_text in enumerate(segments_texts):
+            for j, (seg_speech, seg_display) in enumerate(
+                zip(speech_segments, display_segments)
+            ):
                 audio_path = audio_dir / f"scene_{idx}_seg_{j+1}.wav"
                 try:
-                    vv.generate_and_save(seg_text, str(audio_path))
+                    vv.generate_and_save(seg_speech, str(audio_path))
                     with AudioFileClip(str(audio_path)) as ac:
                         seg_dur = max(0.05, ac.duration)
                     
                     segments.append({
-                        "text": seg_text,
+                        "text": seg_display,
                         "duration": round(seg_dur, 3),
                         "start": round(cursor, 3),
                         "audio_path": str(audio_path)
@@ -171,9 +195,9 @@ def compose_video_from_analysis(
                     print(f"  - シーン{idx} セグメント{j+1}: dur={seg_dur:.2f}s start={segments[-1]['start']:.2f}s")
                 except Exception as e:
                     print(f"⚠️ 音声生成失敗: {e}")
-                    est = max(0.5, len(seg_text) / 4.0)
+                    est = max(0.5, len(seg_speech) / 4.0)
                     segments.append({
-                        "text": seg_text, "duration": round(est, 3),
+                        "text": seg_display, "duration": round(est, 3),
                         "start": round(cursor, 3), "audio_path": None
                     })
                     cursor += est

@@ -57,6 +57,15 @@ class LlmNewsCollector:
 
         return None
 
+    @staticmethod
+    def _clean_ticker(raw) -> Optional[str]:
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if not s or s.lower() in ("null", "none", "n/a"):
+            return None
+        return s
+
     def search_news(self, query: str, num_results: int = 5) -> List[Dict]:
         """
         指定されたクエリでWeb検索を行い、ニュース記事を収集します。
@@ -107,7 +116,9 @@ class LlmNewsCollector:
                     "url": article.get("url", "#"),
                     "snippet": article.get("summary", "要約なし"), # summary を snippet として扱う
                     "source": article.get("source", "不明"),
-                    "published_at": article.get("date", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    "published_at": article.get("date", datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                    "related_ticker": self._clean_ticker(article.get("primary_ticker")),
+                    "related_company_name": (article.get("company_name") or "").strip(),
                 }
                 news_items.append(news_item)
             
