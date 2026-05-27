@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-03-10T16:41:10.176609",
-    "video_type": "evening_video",
-    "title": "【日経1900円高】原油111ドルで狙う倍増株"
-  },
-  {
     "date": "2026-03-11T06:08:54.155752",
     "video_type": "morning_video",
     "title": "【今すぐ買え】NVDA格上げとAI巨額投資で爆益"
@@ -498,5 +493,10 @@
     "date": "2026-05-27T06:31:21.683315",
     "video_type": "morning_video",
     "title": "【確認】ニュースリストが空です"
+  },
+  {
+    "date": "2026-05-27T20:03:01.488746",
+    "video_type": "evening_video",
+    "title": "【5度目の石油ショック】日銀総裁が警告"
   }
 ]
