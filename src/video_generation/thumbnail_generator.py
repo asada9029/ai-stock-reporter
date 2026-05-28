@@ -5,6 +5,7 @@ YouTubeサムネイルを自動生成
 
 import os
 import re
+import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -754,8 +755,8 @@ class ThumbnailGenerator:
         title_y = 180
         title_x = 60
         
-        # タイトルを改行処理（1行7文字まで、最大3行）
-        max_chars_per_line = 7
+        # 改行処理（視覚的な幅で 7.0 分まで、最大3行）
+        max_width_per_line = 7.0
         
         # 【】で囲まれた部分を抽出して色を変える準備
         accent_match = re.search(r'【(.*?)】', title)
@@ -766,8 +767,19 @@ class ThumbnailGenerator:
         
         # 改行処理
         lines = []
-        for i in range(0, len(display_title), max_chars_per_line):
-            lines.append(display_title[i:i+max_chars_per_line])
+        current_line = ""
+        current_width = 0.0
+        for char in display_title:
+            char_width = 1.0 if unicodedata.east_asian_width(char) in ('W', 'F', 'A') else 0.5
+            if current_width + char_width > max_width_per_line:
+                lines.append(current_line)
+                current_line = char
+                current_width = char_width
+            else:
+                current_line += char
+                current_width += char_width
+        if current_line:
+            lines.append(current_line)
         
         # フォントサイズをさらに大きく (95 -> 130)
         try:

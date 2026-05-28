@@ -1,83 +1,111 @@
+"""
+ショート動画のレイアウト確認（LLM不要・固定ダミー台本）。
+
+使い方:
+  $env:SKIP_VOICE="1"
+  $env:DRAFT_RENDER="1"
+  python test_shorts_layout.py
+  python test_shorts_layout.py --type shorts_b
+"""
 import os
 import sys
 import json
+import argparse
 from pathlib import Path
 
-# プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.absolute()
 sys.path.append(str(project_root))
 
 from src.video_generation.structured_pipeline import compose_video_from_analysis
 
-def test_shorts_layout_dummy(shorts_type="shorts_a"):
-    print(f"🚀 ショート動画レイアウト確認（完全ダミー台本）: {shorts_type}")
-    
-    # 1. 案B用のダミーチャート画像準備
-    dummy_img_path = "output/stock_charts/dummy_square.png"
-    if shorts_type == "shorts_b":
-        os.makedirs("output/stock_charts", exist_ok=True)
-        from PIL import Image
-        img = Image.new('RGB', (800, 600), color=(73, 109, 137))
-        img.save(dummy_img_path)
 
-    # 2. 完全ダミーの台本（シーン配列）を定義
+def _ensure_placeholder() -> str:
+    p = Path("data/images/placeholder.png")
+    if p.exists():
+        return str(p)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    from PIL import Image, ImageDraw
+
+    w, h = 1280, 720
+    img = Image.new("RGB", (w, h), (235, 245, 255))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle((40, 40, w - 40, h - 40), outline=(120, 150, 190), width=6)
+    img.save(p, "PNG")
+    return str(p)
+
+
+def _dummy_scenes(shorts_type: str) -> list:
+    placeholder = _ensure_placeholder()
     if shorts_type == "shorts_a":
-                # 案A: テキストのみ
-                pre_generated_scenes = [
-                    {
-                        "scene": 1,
-                        "section_title": "",
-                        "duration": 5.0,
-                        "text": "こんにちは、株野みのりです！今日の重要ニュースを3つ、爆速でお伝えしますね。",
-                        "on_screen_text": [
-                            "■ 今日の3大ニュース",
-                            "1. 日経平均が史上最高値を更新！\n   半導体株中心に買いが加速してい\n",
-                            "2. 米国株もハイテク中心に強い動き\n   利下げ期待が相場を支えていま\n",
-                            "3. 円安が進行し、輸出関連株に買い\n   為替の動きに注目が集まってい"
-                        ],
-                        "emotion": "happy",
-                        "image_type": "bg_only",
-                        "bg_name": "bg_illust.png",
-                        "target_files": []
-                    }
-                ]
-    else:
-        # 案B: 画像＋テキスト
-        pre_generated_scenes = [
+        return [
             {
                 "scene": 1,
                 "section_title": "",
                 "duration": 5.0,
-                "text": "注目銘柄のチャートを見てみましょう。こちらの銘柄、強い上昇トレンドが続いていますね。",
-                "on_screen_text": ["■ 注目銘柄：ダミー企業A", "・直近1ヶ月で20%の上昇", "・好決算を受けて買いが加速", "・さらなる高値更新に期待です"],
-                "emotion": "confident",
+                "text": "こんにちは、株野みのりです！今日の株用語をやさしく解説します。",
+                "on_screen_text": [
+                    "■テスト用語",
+                    "・かみ砕いた解説1行目",
+                    "・かみ砕いた解説2行目",
+                    "・初心者へのアドバイス",
+                ],
+                "explained_term": "テスト用語",
+                "emotion": "normal",
                 "image_type": "chart",
                 "bg_name": "bg_illust.png",
-                "target_files": [dummy_img_path]
+                "target_files": [placeholder],
             }
         ]
+    # shorts_b
+    dummy_chart = "output/stock_charts/dummy_square.png"
+    os.makedirs("output/stock_charts", exist_ok=True)
+    from PIL import Image
 
-    # 3. 最小限の分析データ（pipelineのバリデーション回避用）
+    img = Image.new("RGB", (800, 600), color=(73, 109, 137))
+    img.save(dummy_chart)
+    return [
+        {
+            "scene": 1,
+            "section_title": "",
+            "duration": 5.0,
+            "text": "注目銘柄のチャートを見てみましょう。",
+            "on_screen_text": [
+                "■ダミー企業A",
+                "・直近1ヶ月で20%の上昇",
+                "・好決算を受けて買いが加速",
+                "・さらなる高値更新に期待",
+            ],
+            "emotion": "normal",
+            "image_type": "chart",
+            "bg_name": "bg_illust.png",
+            "target_files": [dummy_chart],
+        }
+    ]
+
+
+def test_shorts_layout_dummy(shorts_type: str = "shorts_a") -> None:
+    print(f"[Layout] ショート動画レイアウト確認（ダミー台本）: {shorts_type}")
+
+    pre_generated_scenes = _dummy_scenes(shorts_type)
     analysis_data = {
         "selected_thumbnail_title": "テスト",
         "selected_highlights": ["要点"],
         "main_news_index": 0,
         "highlight_indices": [0],
         "attention_news": [{"title": "ニュース", "snippet": "テスト"}],
-        "sector_analysis": {"sectors": []}
+        "sector_analysis": {"sectors": []},
     }
-    
-    # 4. 構成の読み込み
+
     structure_path = project_root / "src/config/video_structure.json"
     with open(structure_path, "r", encoding="utf-8") as f:
         structures = json.load(f)
     video_structure = structures.get(shorts_type)
-    
-    # 5. 動画生成
-    video_path = f"output/layout_check_{shorts_type}.mp4"
-    video_size = (1080, 1920)
-    
-    result_path, thumb_path, thumb_title, thumb_highlights = compose_video_from_analysis(
+
+    draft = os.getenv("DRAFT_RENDER", "").strip().lower() in ("1", "true", "yes")
+    video_size = (540, 960) if draft else (1080, 1920)
+    video_path = f"output/layout_check_{shorts_type}_noaudio.mp4"
+
+    result_path, _, _, _, _ = compose_video_from_analysis(
         video_structure=video_structure,
         analysis_data=analysis_data,
         enriched_data={},
@@ -85,16 +113,21 @@ def test_shorts_layout_dummy(shorts_type="shorts_a"):
         assets_dir="src/assets",
         video_type=shorts_type,
         size=video_size,
-        pre_generated_scenes=pre_generated_scenes # ダミー台本を直接渡す
+        pre_generated_scenes=pre_generated_scenes,
     )
-    
+
     if result_path and os.path.exists(result_path):
-        print(f"✅ レイアウト確認用動画生成成功: {result_path}")
+        print(f"[OK] レイアウト確認用動画: {result_path}")
     else:
-        print("❌ 動画生成失敗")
+        print("[NG] 動画生成失敗")
+
 
 if __name__ == "__main__":
-    # 案Aのレイアウト確認
-    test_shorts_layout_dummy("shorts_a")
-    # 案Bのレイアウト確認
-    test_shorts_layout_dummy("shorts_b")
+    parser = argparse.ArgumentParser(description="ショートレイアウト確認（LLM不要）")
+    parser.add_argument("--type", choices=["shorts_a", "shorts_b", "both"], default="both")
+    args = parser.parse_args()
+    if args.type == "both":
+        test_shorts_layout_dummy("shorts_a")
+        test_shorts_layout_dummy("shorts_b")
+    else:
+        test_shorts_layout_dummy(args.type)

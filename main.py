@@ -48,7 +48,7 @@ def cleanup_old_files():
                         pass
     print("✅ クリーンアップ完了\n")
 
-def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights):
+def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights, chapters_text=""):
     """サムネイルの文言などからタイトルと概要欄を生成する"""
     jst = pytz.timezone('Asia/Tokyo')
     now = datetime.datetime.now(jst)
@@ -58,9 +58,9 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     
     if is_shorts:
         if "shorts_a" in video_type:
-            base_title = f"【爆速！今日の株ニュース｜{date_str}】"
-            impact_desc = "今日の重要ニュース3つを1分で解説！本編動画ではさらに詳しく深掘りしています。"
-            hashtags = "#日本株\n#日経平均\n#米国株\n#S&P500\n#株ニュース\n#投資初心者\n#株価予想\n#Shorts\n#マイカブ"
+            base_title = f"【1分でわかる！今日の株用語解説｜{date_str}】"
+            impact_desc = "本日のマーケットやニュースに関連した、初心者が知っておくべき重要株用語を1分でやさしく解説します！"
+            hashtags = "#日本株\n#日経平均\n#米国株\n#株用語\n#株ニュース\n#投資初心者\n#株価予想\n#Shorts\n#マイカブ"
         else:
             base_title = f"【明日の注目銘柄｜{date_str}】"
             impact_desc = "チャートが動いている注目銘柄をピックアップ！明日の投資戦略の参考にしてください。"
@@ -101,9 +101,14 @@ def generate_youtube_metadata(video_type, thumbnail_title, thumbnail_highlights)
     else:
         news_intro = f"本日は「{thumbnail_title}」について解説します。\n"
 
+    # チャプター情報
+    chapters_section = ""
+    if chapters_text and not is_shorts:
+        chapters_section = f"【チャプター】\n{chapters_text}\n\n"
+
     description = f"""{news_intro}{impact_desc}
 
-【本日のキーワード】
+{chapters_section}【本日のキーワード】
 株価予想、明日の注目銘柄、株式投資、新NISA、資産運用、日経平均、S&P500
 
 【本チャンネルについて】
@@ -148,9 +153,15 @@ def main():
     )
     parser.add_argument("--skip-upload", action="store_true", help="Skip YouTube upload")
     parser.add_argument("--no-cleanup", action="store_true", help="Skip cleanup")
+    parser.add_argument(
+        "--presentation",
+        default="classic",
+        choices=["classic", "immersive"],
+        help="動画演出モード（classic=現行, immersive=聞き中心・短い画面ラベル・セクションSE）",
+    )
     args = parser.parse_args()
 
-    print(f"\n🚀 AI Stock Reporter (Production) 起動: {args.type}")
+    print(f"\n🚀 AI Stock Reporter (Production) 起動: {args.type} [{args.presentation}]")
 
     market_schedule_type = _market_schedule_video_type(args.type)
 
@@ -229,14 +240,15 @@ def main():
         video_size = (1080, 1920) if "shorts" in args.type else (1920, 1080)
         
         print("\n🎬 動画合成を開始します...")
-        result_path, thumb_path, thumb_title, thumb_highlights = compose_video_from_analysis(
+        result_path, thumb_path, thumb_title, thumb_highlights, chapters_text = compose_video_from_analysis(
             video_structure=video_structure,
             analysis_data=analysis_data,
             enriched_data=enriched_data,
             output_video=video_path,
             assets_dir="src/assets",
             video_type=args.type,
-            size=video_size
+            size=video_size,
+            presentation_mode=args.presentation,
         )
         
         if not result_path or not os.path.exists(video_path):
@@ -246,7 +258,7 @@ def main():
         # 4. YouTubeアップロード
         if not args.skip_upload:
             print("\n📺 YouTubeへのアップロード・予約投稿を開始します...")
-            title, description = generate_youtube_metadata(args.type, thumb_title, thumb_highlights)
+            title, description = generate_youtube_metadata(args.type, thumb_title, thumb_highlights, chapters_text)
             publish_at = get_publish_time(market_schedule_type)
             thumbnail_path = thumb_path if thumb_path else f"output/thumbnail_final_video_{args.type}.png"
             

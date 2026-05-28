@@ -44,7 +44,7 @@ class VOICEVOXClient:
                 "VOICEVOXが起動していることを確認してください。"
             )
         
-        print(f"✅ VOICEVOX クライアント初期化完了")
+        print("[OK] VOICEVOX クライアント初期化完了")
         print(f"   - エンドポイント: {self.base_url}")
         print(f"   - デフォルトスピーカー: {self._get_speaker_name(self.default_speaker)}")
     
@@ -59,11 +59,11 @@ class VOICEVOXClient:
             response = requests.get(f"{self.base_url}/version", timeout=5)
             if response.status_code == 200:
                 version = response.json()
-                print(f"🎤 VOICEVOX バージョン: {version}")
+                print(f"[VOICEVOX] バージョン: {version}")
                 return True
             return False
         except Exception as e:
-            print(f"❌ 接続エラー: {e}")
+            print(f"[NG] 接続エラー: {e}")
             return False
     
     def _get_speaker_name(self, speaker_id: int) -> str:

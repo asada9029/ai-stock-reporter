@@ -11,6 +11,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from typing import Dict, List, Optional
+from src.utils.logger import log, log_kv, timed
 
 # 銘柄チャートと同様のクエリ（ローソク足・出来高・移動平均）
 CHART_PAGE_QUERY = (
@@ -282,17 +283,19 @@ class MarketIndexCapturer:
         driver = self._get_driver()
         used_selector = None
         try:
-            print(f"Accessing {market_info['name']} chart page: {chart_url}")
+            log_kv("📈 index_chart:start", {"market": market_key, "name": market_info["name"]})
             driver.get(chart_url)
             time.sleep(2)
 
-            chart_elem, used_selector = self._find_chart_element(driver)
+            with timed("📈 index_chart:find_element") as t:
+                chart_elem, used_selector = self._find_chart_element(driver)
+                t["selector"] = used_selector or "-"
             if not chart_elem:
                 raise TimeoutException(
                     f"chart element not found (tried {self.chart_selectors}, "
                     f"wait={self.chart_selector_wait_sec}s each)"
                 )
-            print(f"  - チャート要素: {used_selector}")
+            log_kv("📈 index_chart:element", {"selector": used_selector})
 
             time.sleep(self.chart_render_wait_sec)
             driver.execute_script(
@@ -316,7 +319,7 @@ class MarketIndexCapturer:
                         f"chart screenshot too small ({file_size} bytes)"
                     )
 
-            print(f"Chart image saved for {market_info['name']}: {filepath}")
+            log_kv("📈 index_chart:saved", {"path": filepath})
 
             # 数値データのスクレイピング
             soup = BeautifulSoup(driver.page_source, 'lxml')
@@ -324,6 +327,9 @@ class MarketIndexCapturer:
             change = "-"
             change_percent = "-"
             
+            collected_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            used_yfinance_for_numbers = False
+
             # 数値データが格納されている要素を特定
             value_area = soup.select_one(current_value_area_selector)
             if value_area:
@@ -343,7 +349,29 @@ class MarketIndexCapturer:
                     change_percent = change_percent_elem.get_text(strip=True)
 
             else:
-                print(f"Warning: Data area not found for {market_info['name']}")
+                log(f"⚠️ index_chart:data_area_not_found market={market_key}")
+
+            # HTML側で価格ボードが取れない（headless等でDOMが変わる）ことがあるので、
+            # その場合は yfinance を使って数値だけ確実に埋める。
+            if (
+                current_price == "-"
+                or change == "-"
+                or change_percent == "-"
+            ):
+                try:
+                    yf = self._get_yfinance_data_for_market(market_info)
+                    if yf:
+                        current_price = str(yf["current"])
+                        change = str(yf["change"])
+                        change_percent = str(yf["change_percent"])
+                        collected_at = yf["timestamp"]
+                        used_yfinance_for_numbers = True
+                        print(
+                            f"    ↪ yfinance で数値補完: {market_info['name']} "
+                            f"(current={current_price}, change_percent={change_percent})"
+                        )
+                except Exception as e:
+                    print(f"    ⚠️ yfinance 補完に失敗: {e}")
 
             return {
                 "market": market_key,
@@ -352,7 +380,8 @@ class MarketIndexCapturer:
                 "current_price": current_price,
                 "change": change,
                 "change_percent": change_percent,
-                "collected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                "collected_at": collected_at,
+                "used_yfinance_for_numbers": used_yfinance_for_numbers,
             }
 
         except TimeoutException as e:

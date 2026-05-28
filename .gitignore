@@ -13,7 +13,7 @@ src/config/youtube_secrets.json
 *.log
 
 output/
-data/*
+data/**
 !data/previous_videos.json
 *.mp4
 !src/assets/animations/subscribe01-ja.mp4
