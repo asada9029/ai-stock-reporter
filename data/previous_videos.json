@@ -1,59 +1,59 @@
 {
     "latest": {
-        "video_id": "auto_2026-05-27T20:02:47.405814",
-        "published_at": "2026-05-27T20:02:47.405814",
+        "video_id": "auto_2026-05-28T20:03:28.019154",
+        "published_at": "2026-05-28T20:03:28.019154",
         "ir_stocks": [
             {
-                "name": "テルモ",
-                "ticker": "4543.T",
+                "name": "LIXIL",
+                "ticker": "5938.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "オリンパス",
-                "ticker": "7733.T",
+                "name": "三和ホールディングス",
+                "ticker": "5929.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "HOYA",
-                "ticker": "7741.T",
+                "name": "東洋製罐グループホールディングス",
+                "ticker": "5901.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "サカタのタネ",
-                "ticker": "1377.T",
+                "name": "王子ホールディングス",
+                "ticker": "3861.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ニッスイ",
-                "ticker": "1332.T",
+                "name": "日本製紙",
+                "ticker": "3863.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "マルハニチロ",
-                "ticker": "1333.T",
+                "name": "レンゴー",
+                "ticker": "3941.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "信越化学工業",
-                "ticker": "4063.T",
+                "name": "ファーストリテイリング",
+                "ticker": "9983.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三菱ケミカルグループ",
-                "ticker": "4188.T",
+                "name": "セブン＆アイ・ホールディングス",
+                "ticker": "3382.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "富士フイルムホールディングス",
-                "ticker": "4901.T",
+                "name": "イオン",
+                "ticker": "8267.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -76,44 +76,158 @@
                 "ir_date": null
             },
             {
-                "name": "オリックス",
-                "ticker": "8591.T",
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本取引所グループ",
-                "ticker": "8697.T",
+                "name": "第一生命ホールディングス",
+                "ticker": "8750.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三菱HCキャピタル",
-                "ticker": "8593.T",
+                "name": "ＭＳ＆ＡＤインシュアランスグループホールディングス",
+                "ticker": "8725.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本電信電話",
-                "ticker": "9432.T",
+                "name": "東京電力ホールディングス",
+                "ticker": "9501.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "KDDI",
-                "ticker": "9433.T",
+                "name": "関西電力",
+                "ticker": "9503.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ソフトバンクグループ",
-                "ticker": "9984.T",
+                "name": "東京ガス",
+                "ticker": "9531.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-05-27T20:02:47.405814",
+            "published_at": "2026-05-27T20:02:47.405814",
+            "ir_stocks": [
+                {
+                    "name": "テルモ",
+                    "ticker": "4543.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "オリンパス",
+                    "ticker": "7733.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "HOYA",
+                    "ticker": "7741.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "サカタのタネ",
+                    "ticker": "1377.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ニッスイ",
+                    "ticker": "1332.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "マルハニチロ",
+                    "ticker": "1333.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "信越化学工業",
+                    "ticker": "4063.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱ケミカルグループ",
+                    "ticker": "4188.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "富士フイルムホールディングス",
+                    "ticker": "4901.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱マテリアル",
+                    "ticker": "5711.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "オリックス",
+                    "ticker": "8591.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本取引所グループ",
+                    "ticker": "8697.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱HCキャピタル",
+                    "ticker": "8593.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本電信電話",
+                    "ticker": "9432.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "KDDI",
+                    "ticker": "9433.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-05-26T19:53:03.307049",
             "published_at": "2026-05-26T19:53:03.307049",
@@ -591,120 +705,6 @@
                 },
                 {
                     "name": "SBIホールディングス",
-                    "ticker": "8473.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "商船三井",
-                    "ticker": "9104.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "川崎汽船",
-                    "ticker": "9107.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-05-08T19:40:02.437531",
-            "published_at": "2026-05-08T19:40:02.437531",
-            "ir_stocks": [
-                {
-                    "name": "ＬＩＸＩＬ",
-                    "ticker": "5938.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ＳＵＭＣＯ",
-                    "ticker": "3436.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三和ホールディングス",
-                    "ticker": "5929.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "リクルートホールディングス",
-                    "ticker": "6098.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "オリエンタルランド",
-                    "ticker": "4661.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "セコム",
-                    "ticker": "9735.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "任天堂",
-                    "ticker": "7974.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "バンダイナムコホールディングス",
-                    "ticker": "7832.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "アシックス",
-                    "ticker": "7936.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱ＵＦＪフィナンシャル・グループ",
-                    "ticker": "8306.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三井住友フィナンシャルグループ",
-                    "ticker": "8316.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "みずほフィナンシャルグループ",
-                    "ticker": "8411.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "野村ホールディングス",
-                    "ticker": "8604.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "大和証券グループ本社",
-                    "ticker": "8601.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ＳＢＩホールディングス",
                     "ticker": "8473.T",
                     "noted_ir": null,
                     "ir_date": null
