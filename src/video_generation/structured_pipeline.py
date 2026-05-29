@@ -102,7 +102,7 @@ def _inject_section_bridges(
     bridge_duration: float = 3.0,
 ) -> List[Dict]:
     """
-    immersive のときだけ、セクション切替の直前にブリッジ（無音）シーンを挿入する。
+    セクション切替の直前にブリッジ（無音）シーンを挿入する。
     - 動画構成（セクション順・尺配分）は崩さず、画面だけ番組感を出す目的。
     - ブリッジ画像が無い場合は挿入しない（ただし開発用にダミーを使うオプションあり）。
     """
@@ -258,7 +258,7 @@ def compose_video_from_analysis(
         )
 
     # --- 2.5. セクションブリッジ（任意・デフォルトOFF。USE_SECTION_BRIDGES=1 のときのみ） ---
-    if use_immersive and (
+    if (
         os.getenv("USE_SECTION_BRIDGES", "").strip().lower() in ("1", "true", "yes")
     ):
         scenes = _inject_section_bridges(scenes, video_type=video_type, assets_dir=assets_dir)

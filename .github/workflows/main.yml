@@ -85,9 +85,12 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_SEARCH: ${{ secrets.GEMINI_API_KEY_SEARCH }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
+          USE_SECTION_BRIDGES: "1"
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
         run: |
+          # ブリッジ画像の生成
+          python generate_bridge_images.py --all
           # 横型本編は immersive（短い画面ラベル・セクションSE・ブリッジ）
           python main.py --type ${{ steps.video-type.outputs.type }} --presentation immersive
 
