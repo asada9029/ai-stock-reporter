@@ -94,7 +94,7 @@ class IRMovementAnalyzer:
                 "period": f"{from_ts.date()} から {to_ts.date()}（本日）まで"
             })
 
-        # 2. LLMによる一括解析（株価変化率・理由・ニュースをすべてWeb検索で調査）
+        # 2. LLMによる一括解析（株価変化率・理由・ニュースをWeb検索）
         if results:
             print(f"📡 {len(results)} 銘柄の動向（騰落率含む）をLLMで一括解析中...")
             try:
@@ -107,28 +107,33 @@ class IRMovementAnalyzer:
 4. 誠実さ：明確な材料が見当たらない場合は、無理にこじつけず「需給の乱れ」「利益確定売り」「材料出尽くし」「外部環境（米国株安など）への連動」など、市場の動向に基づいた妥当な推論を行ってください。
 5. 各企業につき、関連ニュースを最大3件（title, summary, urlを含む）含めてください。
 6. 回答は必ず指定されたJSON形式のみとし、余計な解説は含めないでください。
+7. キーは **証券コード（ticker）のみ**（例: "7203.T"）。会社名をキーにしない。
 
 # 企業リストと対象期間:
 {json.dumps(stocks_data_for_llm, ensure_ascii=False, indent=2)}
 
 # 出力形式例:
 {{
-  "トヨタ自動車": {{
+  "7203.T": {{
     "change_percent": "+2.5",
     "news": [
       {{"title": "...", "summary": "...", "url": "..."}}
     ],
-    "reason": "株価が2.5%上昇したのは、〇〇の発表が好感されたためと推定されます。出典：〇〇新聞。"
+    "reason": "株価が2.5%上昇したのは、〇〇の発表が好感されたためと推定されます。"
   }}
 }}
 """
-                llm_response = self.news_collector.gemini_client.generate_json_with_search(prompt=prompt)
-                
-                # LLMの回答を各銘柄の結果にマッピング
+                llm_response = self.news_collector.gemini_client.generate_json_with_search(
+                    prompt=prompt
+                )
+
                 for res in results:
                     name = res["company_name"]
                     ticker = res["ticker"]
-                    analysis = llm_response.get(name) or llm_response.get(ticker)
+                    analysis = (
+                        (llm_response.get(ticker) if ticker else None)
+                        or llm_response.get(name)
+                    )
                     if analysis:
                         res["change_percent"] = analysis.get("change_percent")
                         res["recent_news"] = analysis.get("news", [])

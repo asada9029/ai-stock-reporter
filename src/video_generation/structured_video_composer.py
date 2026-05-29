@@ -8,6 +8,12 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from src.config.presentation import is_immersive_mode, normalize_presentation_mode
+from src.video_generation.character_emotion import (
+    assign_segment_emotions,
+    apply_emotion_motion,
+    merge_emotion_beats_for_scene,
+    normalize_emotion,
+)
 
 from moviepy import (
     ImageClip,
@@ -26,21 +32,6 @@ def _rounded_plate_clip(size: Tuple[int, int], *, radius: int = 26, color=(255, 
     draw = ImageDraw.Draw(img)
     fill = (int(color[0]), int(color[1]), int(color[2]), int(alpha))
     draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=fill, outline=(255, 255, 255, 140), width=2)
-    return ImageClip(np.array(img))
-
-def _border_frame_clip(size: Tuple[int, int], *, thickness: int = 10, color=(27, 94, 32), alpha: int = 210, radius: int = 18) -> ImageClip:
-    """画像の上に重ねる色枠（角丸）"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    stroke = (int(color[0]), int(color[1]), int(color[2]), int(alpha))
-    # 外枠
-    draw.rounded_rectangle(
-        (0 + thickness // 2, 0 + thickness // 2, w - 1 - thickness // 2, h - 1 - thickness // 2),
-        radius=radius,
-        outline=stroke,
-        width=int(thickness),
-    )
     return ImageClip(np.array(img))
 
 def _shadow_clip(size: Tuple[int, int], *, radius: int = 18, blur: int = 14, alpha: int = 80) -> ImageClip:
@@ -315,8 +306,27 @@ def _wrap_text_jp(text: str, max_width_per_line: float) -> str:
     return "\n".join(out_lines).strip("\n")
 
 
-def _label_text_color_for_immersive(line: str) -> str:
+def _immersive_price_change_sign(lines: List[str]) -> Optional[str]:
+    """on_screen_text 全体から騰落符号を推定（枠色・文字色を一致させる）。"""
+    for ln in lines[:6]:
+        s = str(ln).replace("％", "%").replace("＋", "+").replace("－", "-")
+        m = re.search(r"([+\-])\s*\d", s)
+        if m:
+            return m.group(1)
+    combined = " ".join(str(x) for x in lines[:6])
+    if re.search(r"[-－]|下落|急落|下げ|マイナス", combined):
+        return "-"
+    if re.search(r"[+＋]|上昇|急騰|上げ|プラス", combined):
+        return "+"
+    return None
+
+
+def _label_text_color_for_immersive(line: str, *, change_sign: Optional[str] = None) -> str:
     """immersive 用: 騰落のニュアンスに応じたラベル色。"""
+    if change_sign == "-":
+        return "#B71C1C"
+    if change_sign == "+":
+        return "#1B5E20"
     if re.search(r"[-－％%]|下落|急落|下げ|マイナス", line):
         return "#B71C1C"
     if re.search(r"[+＋]|上昇|急騰|上げ|プラス", line):
@@ -823,51 +833,31 @@ def render_scenes_to_video(
                         v_clip = v_clip.with_duration(total_scene_duration).with_start(cumulative_time)
                         if video_cross > 0:
                             v_clip = v_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                        # immersive: チャートは“主役感”のため背面に影を入れる（表は除外）
+                        # immersive: チャートはレイアウト枠(conf)基準で影のみ（色枠は使わない）
                         if (not is_shorts) and use_immersive and is_chart and (not is_event_calendar):
                             try:
-                                sh_dx, sh_dy = 8, 10
-                                sh_w = int(v_clip.w) + 16
-                                sh_h = int(v_clip.h) + 16
+                                box_w, box_h = int(conf["w"]), int(conf["h"])
+                                box_x, box_y = int(conf["x"]), int(conf["y"])
                                 shadow = (
-                                    _shadow_clip((sh_w, sh_h), radius=20, blur=14, alpha=70)
-                                    .with_position((pos_x + sh_dx - 8, pos_y + sh_dy - 8))
+                                    _shadow_clip(
+                                        (box_w + 28, box_h + 28),
+                                        radius=20,
+                                        blur=14,
+                                        alpha=70,
+                                    )
+                                    .with_position((box_x - 6, box_y - 4))
                                     .with_duration(total_scene_duration)
                                     .with_start(cumulative_time)
                                 )
                                 if video_cross > 0:
-                                    shadow = shadow.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
+                                    shadow = shadow.with_effects(
+                                        [FadeIn(video_cross), FadeOut(video_cross)]
+                                    )
                                 all_clips.append(shadow)
                             except Exception as e:
                                 print(f"[WARN] チャート影生成失敗: {e}")
 
                         all_clips.append(v_clip)
-
-                        # immersive: チャート枠（上昇=緑 / 下落=赤）
-                        if (not is_shorts) and use_immersive and is_chart and (not is_event_calendar):
-                            try:
-                                change = None
-                                if on_screen_text:
-                                    lines = [on_screen_text] if isinstance(on_screen_text, str) else list(on_screen_text)
-                                    for ln in lines[:3]:
-                                        s = str(ln).replace("％", "%").replace("＋", "+").replace("－", "-")
-                                        m = re.search(r"([+\-])\s*\d", s)
-                                        if m:
-                                            change = m.group(1)
-                                            break
-                                if change in ("+", "-"):
-                                    col = (27, 94, 32) if change == "+" else (183, 28, 28)
-                                    border = (
-                                        _border_frame_clip((int(v_clip.w), int(v_clip.h)), thickness=10, color=col, alpha=200, radius=18)
-                                        .with_position((pos_x, pos_y))
-                                        .with_duration(total_scene_duration)
-                                        .with_start(cumulative_time)
-                                    )
-                                    if video_cross > 0:
-                                        border = border.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                                    all_clips.append(border)
-                            except Exception as e:
-                                print(f"[WARN] チャート枠生成失敗: {e}")
                     except Exception as e:
                         print(f"⚠️ ビジュアル表示失敗 ({img_name}): {e}")
         
@@ -907,7 +897,7 @@ def render_scenes_to_video(
                     # 横動画の折り返しロジック
                     is_with_image = bool(target_files)
                     if use_immersive:
-                        wrap_n = 14 if is_with_image else 18
+                        wrap_n = 20
                     else:
                         initial_lines = len(formatted_lines)
                         if initial_lines > 6:
@@ -1026,7 +1016,10 @@ def render_scenes_to_video(
 
                 label_color = "#1A237E"
                 if use_immersive and formatted_lines:
-                    label_color = _label_text_color_for_immersive(formatted_lines[0])
+                    immersive_sign = _immersive_price_change_sign(formatted_lines)
+                    label_color = _label_text_color_for_immersive(
+                        formatted_lines[0], change_sign=immersive_sign
+                    )
 
                 # --- immersive: 方法1（行ごとのTextClipで自前レイアウト） ---
                 # ・captionは使わず、3行を固定座標で並べる
@@ -1157,68 +1150,93 @@ def render_scenes_to_video(
         # --- 4.6. immersive: 強調ワード（旧: 左上に浮かせる表示） ---
         # 案Aでは「要約枠内に統合」するため、ここでの単独表示は行わない。
 
-        # --- 5. キャラクターレイヤー ---
-        emotion = sc.get("emotion", "normal")
-        # ブリッジは「右下ちびキャラ」を優先（セクション一枚絵を邪魔しない）
-        if (not is_shorts) and sc.get("visual_template") == "bridge":
-            char_path = images_dir / "mini.png"
-        else:
-            char_path = _asset_for_emotion(images_dir, emotion, is_shorts=is_shorts)
-        if char_path and sc.get("section_title") != "subscribe":
+        # --- 5. キャラクターレイヤー（感情別画像 + セグメントタイミングでアニメ） ---
+        if sc.get("section_title") != "subscribe":
+            scene_emotion = normalize_emotion(sc.get("emotion"))
+            segments_for_char = sc.get("segments") or []
+            if segments_for_char:
+                assign_segment_emotions(sc)
             try:
                 if is_shorts:
-                    # ショート：mini.png をテキストの左下に配置
                     char_h = int(size[1] * 0.25)
-                    with Image.open(str(char_path)) as img:
-                        img_rgba = img.convert("RGBA")
-                        # 左右反転
-                        img_flipped = img_rgba.transpose(Image.FLIP_LEFT_RIGHT)
-                        char_clip = ImageClip(np.array(img_flipped)).resized(height=char_h)
-                    
-                    # テキストの位置（text_y_base）と高さ（actual_text_h）から相対的に配置
+                    char_max_w = None
                     if on_screen_text:
                         char_x = 30
-                        # テキスト枠の下端から少し下（相対配置・サイズは変更しない）
                         _gap_text_to_char = -70
-                        if shorts_text_bottom_y is not None:
+                        char_y_placeholder = (
+                            shorts_text_bottom_y + _gap_text_to_char
+                            if shorts_text_bottom_y is not None
+                            else size[1] - int(size[1] * 0.25) - 170
+                        )
+                    else:
+                        char_x = 30
+                        char_y_placeholder = size[1] - int(size[1] * 0.25) - 170
+                    beats = (
+                        merge_emotion_beats_for_scene(
+                            segments_for_char, scene_emotion, total_scene_duration
+                        )
+                        if segments_for_char
+                        else [(0.0, total_scene_duration, scene_emotion)]
+                    )
+                    for rel_start, beat_dur, beat_emotion in beats:
+                        beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=True)
+                        if not beat_path:
+                            continue
+                        with Image.open(str(beat_path)) as img:
+                            img_rgba = img.convert("RGBA").transpose(Image.FLIP_LEFT_RIGHT)
+                            char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
+                        char_y = char_y_placeholder
+                        if on_screen_text and shorts_text_bottom_y is not None:
                             char_y = shorts_text_bottom_y + _gap_text_to_char
                         else:
                             char_y = size[1] - char_clip.h - 170
-                    else:
-                        char_x = 30
-                        char_y = size[1] - char_clip.h - 170
-                else:
-                    if sc.get("visual_template") == "bridge":
-                        # ブリッジ：右下の小さなちびキャラ
-                        # ブリッジは番組感の「アイコン」なので少し大きめ＆端に寄せすぎない
+                        char_clip = char_clip.with_duration(beat_dur).with_start(cumulative_time + rel_start)
+                        char_clip = apply_emotion_motion(char_clip, beat_emotion, char_x, char_y)
+                        if video_cross > 0:
+                            char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
+                        all_clips.append(char_clip)
+                elif sc.get("visual_template") == "bridge":
+                    char_path = images_dir / "mini.png"
+                    if char_path.exists():
                         char_h = int(size[1] * 0.42)
                         with Image.open(str(char_path)) as img:
-                            img_rgba = img.convert("RGBA")
-                            char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
-                        pad_x = 120
-                        pad_y = 70
+                            char_clip = ImageClip(np.array(img.convert("RGBA"))).resized(height=char_h)
+                        pad_x, pad_y = 120, 70
                         char_x = size[0] - char_clip.w - pad_x
                         char_y = size[1] - char_clip.h - pad_y
-                    else:
-                        # 横型：右端に配置（従来）
-                        char_max_w = int(size[0] * 0.25)
-                        char_h = int(size[1] * 0.7)
-                    
-                        # 警告対策と透過維持のため、RGBAに変換して読み込む
-                        with Image.open(str(char_path)) as img:
-                            img_rgba = img.convert("RGBA")
-                            char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
-                        
+                        char_clip = (
+                            char_clip.with_duration(total_scene_duration)
+                            .with_start(cumulative_time)
+                        )
+                        char_clip = apply_emotion_motion(char_clip, scene_emotion, char_x, char_y)
+                        if video_cross > 0:
+                            char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
+                        all_clips.append(char_clip)
+                else:
+                    char_max_w = int(size[0] * 0.25)
+                    char_h = int(size[1] * 0.7)
+                    beats = (
+                        merge_emotion_beats_for_scene(
+                            segments_for_char, scene_emotion, total_scene_duration
+                        )
+                        if segments_for_char
+                        else [(0.0, total_scene_duration, scene_emotion)]
+                    )
+                    for rel_start, beat_dur, beat_emotion in beats:
+                        beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=False)
+                        if not beat_path:
+                            continue
+                        with Image.open(str(beat_path)) as img:
+                            char_clip = ImageClip(np.array(img.convert("RGBA"))).resized(height=char_h)
                         if char_clip.w > char_max_w:
                             char_clip = char_clip.resized(width=char_max_w)
-                        
                         char_x = size[0] - char_clip.w - 10
                         char_y = size[1] - char_clip.h
-                
-                char_clip = char_clip.with_duration(total_scene_duration).with_start(cumulative_time).with_position((char_x, char_y))
-                if video_cross > 0:
-                    char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                all_clips.append(char_clip)
+                        char_clip = char_clip.with_duration(beat_dur).with_start(cumulative_time + rel_start)
+                        char_clip = apply_emotion_motion(char_clip, beat_emotion, char_x, char_y)
+                        if video_cross > 0:
+                            char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
+                        all_clips.append(char_clip)
             except Exception as e:
                 print(f"⚠️ キャラクター表示失敗: {e}")
 

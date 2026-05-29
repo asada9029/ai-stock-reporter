@@ -93,7 +93,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    os.environ.setdefault("USE_DUMMY_BRIDGES", "true")
+    # ブリッジは --with-bridges 指定時のみ（ダミー背景は使わない）
     if args.draft:
         os.environ["DRAFT_RENDER"] = "true"
 

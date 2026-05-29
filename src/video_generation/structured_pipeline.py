@@ -16,6 +16,35 @@ from moviepy.audio.fx import AudioFadeIn, AudioFadeOut, MultiplyVolume
 from src.config.presentation import is_immersive_mode, normalize_presentation_mode
 
 
+def _reorder_attention_news_for_thumbnail(
+    attention_news: List[Dict],
+    main_news_index: int,
+    highlight_indices: List[int],
+) -> tuple[List[Dict], int, List[int]]:
+    """
+    サムネイル選定後に attention_news を並べ替え、メイン→ハイライト→その他の順にする。
+    台本LLMが index 0 を先頭ニュースとして扱いやすくする。
+    """
+    if not attention_news:
+        return attention_news, 0, []
+
+    n = len(attention_news)
+    main_i = main_news_index if 0 <= main_news_index < n else 0
+    hi: List[int] = []
+    for i in highlight_indices or []:
+        if isinstance(i, int) and 0 <= i < n and i != main_i and i not in hi:
+            hi.append(i)
+
+    order: List[int] = [main_i] + hi
+    for i in range(n):
+        if i not in order:
+            order.append(i)
+
+    reordered = [attention_news[i] for i in order]
+    new_hi = list(range(1, 1 + len(hi)))
+    return reordered, 0, new_hi
+
+
 def _section_display_name(section_title: str) -> str:
     """チャプター・SE用のセクション表示名。"""
     if not section_title:
@@ -193,6 +222,17 @@ def compose_video_from_analysis(
             analysis_data["selected_highlights"] = thumb_highlights
             analysis_data["main_news_index"] = main_news_index
             analysis_data["highlight_indices"] = highlight_indices
+            news = analysis_data.get("attention_news") or []
+            if news:
+                reordered, main_news_index, highlight_indices = _reorder_attention_news_for_thumbnail(
+                    news, main_news_index, highlight_indices
+                )
+                analysis_data["attention_news"] = reordered
+                analysis_data["main_news_index"] = main_news_index
+                analysis_data["highlight_indices"] = highlight_indices
+                print(
+                    f"[OK] attention_news をサムネ順に並べ替え（先頭=メイン: {reordered[0].get('title', '')[:40]}...）"
+                )
             print(f"[OK] サムネイル完成 & ニュース選定完了: {thumb_title}")
         except Exception as e:
             print(f"[WARN] サムネイル生成・選定失敗: {e}")
@@ -213,8 +253,10 @@ def compose_video_from_analysis(
             presentation_mode=presentation_mode,
         )
 
-    # --- 2.5. immersive: セクションブリッジを挿入（構成は崩さず画面だけ改善） ---
-    if use_immersive:
+    # --- 2.5. セクションブリッジ（任意・デフォルトOFF。USE_SECTION_BRIDGES=1 のときのみ） ---
+    if use_immersive and (
+        os.getenv("USE_SECTION_BRIDGES", "").strip().lower() in ("1", "true", "yes")
+    ):
         scenes = _inject_section_bridges(scenes, video_type=video_type, assets_dir=assets_dir)
 
     # --- 3. チャンネル登録お願いシーンを末尾に強制追加 ---
@@ -454,6 +496,9 @@ def compose_video_from_analysis(
                     scene_audio_only_duration += est
 
             sc["segments"] = segments
+            from src.video_generation.character_emotion import assign_segment_emotions
+
+            assign_segment_emotions(sc)
             sc["duration"] = round(padding_before + scene_audio_only_duration + padding_after, 3)
             cumulative_time_for_chapters += sc["duration"]
             print(f"  => シーン{idx} 確定期間: {sc['duration']}s")

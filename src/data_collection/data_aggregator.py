@@ -341,15 +341,22 @@ class DataAggregator:
                             if c.get("name") and c.get("ticker"):
                                 all_companies_for_news.append(c)
 
-                    # 全企業のニュースを一括でLLMに問い合わせ
+                    # 全企業のニュースを一括取得（セクター2×各2銘柄＝最大8社程度）
                     all_companies_news = {}
                     if all_companies_for_news:
-                        print(f"注目企業（全{len(all_companies_for_news)}社）のニュースを一括取得中...")
-                        companies_str = ", ".join([f"{c['name']}({c['ticker']})" for c in all_companies_for_news])
+                        print(
+                            f"注目企業（全{len(all_companies_for_news)}社）のニュースを一括取得中..."
+                        )
+                        companies_str = ", ".join(
+                            [
+                                f"{c['name']}({c['ticker']})"
+                                for c in all_companies_for_news
+                            ]
+                        )
                         news_prompt = f"""以下の企業について、それぞれ過去12時間の最新ニュースを3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
     出力は、提供されたリストの「証券コード（例: 7203.T）」をそのままキーとし、その値はニュースのリスト（各ニュースは辞書形式で "title" と "summary" を含む）としてください。
     銘柄名や余計な文字をキーに含めないでください。
-    余計な説明や```json```などのマークダウンは不要です。
+    余計な説明や```json```などのマークダウンは不要です。JSONオブジェクト1つのみ。
 
     出力例:
     {{
@@ -364,7 +371,11 @@ class DataAggregator:
 
     企業リスト: [{companies_str}]
     """
-                        all_companies_news = self.news_collector.gemini_client.generate_json_with_search(prompt=news_prompt)
+                        all_companies_news = (
+                            self.news_collector.gemini_client.generate_json_with_search(
+                                prompt=news_prompt
+                            )
+                        )
 
                     # データを構造化して集約
                     for sector in target_sectors:
