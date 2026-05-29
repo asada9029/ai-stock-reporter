@@ -1,6 +1,9 @@
 .python-version
 venv/
 .env
+.env.*
+!.env.example
+
 src/config/youtube_secrets.json
 
 # Python cache / bytecode
@@ -12,9 +15,25 @@ src/config/youtube_secrets.json
 .ruff_cache/
 *.log
 
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.cursor/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Generated media & local datasets
 output/
-data/*
+data/**
 !data/previous_videos.json
 *.mp4
 !src/assets/animations/subscribe01-ja.mp4
 *.wav
+
+# Runtime logs (thumbnail_history は CI でコミット対象)
+logs/*
+!logs/thumbnail_history.json
