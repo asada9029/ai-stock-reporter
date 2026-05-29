@@ -1137,7 +1137,7 @@ def render_scenes_to_video(
                             color="#4A2711",
                             method="label",
                             # label下切れ対策
-                            size=(None, 64),
+                            size=(None, 80),
                         ).with_duration(total_scene_duration).with_start(cumulative_time)
 
                     pad_x = 22
