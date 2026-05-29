@@ -121,7 +121,11 @@ def _inject_section_bridges(
         if is_new_section and last_section is not None and section_title != "subscribe":
             key = _section_key_for_bridge(video_type, section_title)
             if key:
-                bridge_path = images_dir / f"bridge_{key}.png"
+                from src.video_generation.bridge_image_generator import (
+                    resolve_bridge_image_path,
+                )
+
+                bridge_path = resolve_bridge_image_path(images_dir, video_type, key)
                 if bridge_path.exists() or (allow_dummy and dummy_path.exists()):
                     use_path = bridge_path if bridge_path.exists() else dummy_path
                     # ブリッジを「新セクションの一部」として扱う（章頭タイミングに載る）

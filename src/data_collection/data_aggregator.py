@@ -162,6 +162,11 @@ class DataAggregator:
         
         # 注目ニュースをルート直下に移動
         aggregated_data["attention_news"] = raw_data.get("attention_news", [])
+        
+        # ニュース取得失敗チェック（GitHub Actions を失敗させるため、空ならエラーを投げる）
+        if not aggregated_data["attention_news"]:
+            raise RuntimeError("注目ニュースの取得に失敗しました（0件）。動画生成を中止します。")
+
         self._enrich_news_visuals(aggregated_data["attention_news"], video_type)
         log_kv("📰 attention_news", {"count": len(aggregated_data.get("attention_news", []) or [])})
 

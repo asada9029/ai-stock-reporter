@@ -279,6 +279,7 @@ def main():
         print(f"❌ プロセス実行中にエラーが発生しました: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1) # GitHub Actions 等で失敗として検知させるため非ゼロで終了
 
 if __name__ == "__main__":
     main()

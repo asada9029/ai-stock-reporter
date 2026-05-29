@@ -409,6 +409,26 @@ def _load_image_clip(path: Path, size: Tuple[int, int], crop_to_aspect: bool = F
             
     return clip.resized(new_size=size)
 
+def _load_char_with_chromakey(path: Path, *, height: Optional[int] = None, width: Optional[int] = None, flip_h: bool = False) -> ImageClip:
+    """キャラ画像のグリーンバックを透過させて読み込む。リサイズは高さまたは幅を指定。"""
+    with Image.open(str(path)) as img:
+        img = img.convert("RGBA")
+        if flip_h:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+        
+        data = np.array(img)
+        # グリーンバック判定
+        r, g, b, a = data[:,:,0], data[:,:,1], data[:,:,2], data[:,:,3]
+        mask = (g > 100) & (g > r) & (g > b)
+        data[mask] = [0, 0, 0, 0]
+        
+        clip = ImageClip(data)
+        if height:
+            clip = clip.resized(height=height)
+        elif width:
+            clip = clip.resized(width=width)
+        return clip
+
 def _load_frame_with_chromakey(path: Path, size: Tuple[int, int]) -> ImageClip:
     """グリーンバック(#00FF00)を透過させてImageClipとして読み込む"""
     with Image.open(str(path)) as img:
@@ -549,6 +569,12 @@ def render_scenes_to_video(
     
     all_clips = []
     cumulative_time = 0.0
+    
+    # ブリッジ用キャラ画像の選択状態をリセット（動画ごとにランダム化するため）
+    if hasattr(render_scenes_to_video, "_bridge_chars"):
+        delattr(render_scenes_to_video, "_bridge_chars")
+    if hasattr(render_scenes_to_video, "_bridge_char_idx"):
+        delattr(render_scenes_to_video, "_bridge_char_idx")
     
     # 1080p用レイアウト定数
     # 字幕を表示しない場合は、下部のエリアを0にしてメイン領域を広げる
@@ -1182,9 +1208,9 @@ def render_scenes_to_video(
                         beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=True)
                         if not beat_path:
                             continue
-                        with Image.open(str(beat_path)) as img:
-                            img_rgba = img.convert("RGBA").transpose(Image.FLIP_LEFT_RIGHT)
-                            char_clip = ImageClip(np.array(img_rgba)).resized(height=char_h)
+                        
+                        char_clip = _load_char_with_chromakey(beat_path, height=char_h, flip_h=True)
+                        
                         char_y = char_y_placeholder
                         if on_screen_text and shorts_text_bottom_y is not None:
                             char_y = shorts_text_bottom_y + _gap_text_to_char
@@ -1196,12 +1222,37 @@ def render_scenes_to_video(
                             char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
                         all_clips.append(char_clip)
                 elif sc.get("visual_template") == "bridge":
-                    char_path = images_dir / "mini.png"
-                    if char_path.exists():
+                    # --- ブリッジ用キャラ画像のランダム選択 ---
+                    # bridge_1.png, bridge_2.png ... の形式を検索
+                    if not hasattr(render_scenes_to_video, "_bridge_chars"):
+                        import random
+                        all_bridge_chars = sorted(list(images_dir.glob("bridge_[0-9]*.png")))
+                        # ランダムにシャッフル
+                        random.shuffle(all_bridge_chars)
+                        render_scenes_to_video._bridge_chars = all_bridge_chars
+                        render_scenes_to_video._bridge_char_idx = 0
+
+                    char_path = None
+                    if render_scenes_to_video._bridge_chars:
+                        # 使用可能な画像から選択
+                        idx = render_scenes_to_video._bridge_char_idx
+                        char_path = render_scenes_to_video._bridge_chars[idx]
+                        
+                        # インデックスを進める（最後まで行ったらシャッフルし直してループ）
+                        render_scenes_to_video._bridge_char_idx += 1
+                        if render_scenes_to_video._bridge_char_idx >= len(render_scenes_to_video._bridge_chars):
+                            import random
+                            random.shuffle(render_scenes_to_video._bridge_chars)
+                            render_scenes_to_video._bridge_char_idx = 0
+                    else:
+                        # 見つからない場合は従来の mini.png
+                        char_path = images_dir / "mini.png"
+
+                    if char_path and char_path.exists():
                         char_h = int(size[1] * 0.42)
-                        with Image.open(str(char_path)) as img:
-                            char_clip = ImageClip(np.array(img.convert("RGBA"))).resized(height=char_h)
-                        pad_x, pad_y = 120, 70
+                        char_clip = _load_char_with_chromakey(char_path, height=char_h)
+                        
+                        pad_x, pad_y = 40, 70
                         char_x = size[0] - char_clip.w - pad_x
                         char_y = size[1] - char_clip.h - pad_y
                         char_clip = (
@@ -1226,10 +1277,11 @@ def render_scenes_to_video(
                         beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=False)
                         if not beat_path:
                             continue
-                        with Image.open(str(beat_path)) as img:
-                            char_clip = ImageClip(np.array(img.convert("RGBA"))).resized(height=char_h)
+                        
+                        char_clip = _load_char_with_chromakey(beat_path, height=char_h)
                         if char_clip.w > char_max_w:
                             char_clip = char_clip.resized(width=char_max_w)
+                        
                         char_x = size[0] - char_clip.w - 10
                         char_y = size[1] - char_clip.h
                         char_clip = char_clip.with_duration(beat_dur).with_start(cumulative_time + rel_start)
