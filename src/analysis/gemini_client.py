@@ -18,9 +18,10 @@ class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
     # モデル定数
-    MODEL_FLASH = "gemini-3.5-flash"           # 通常生成・Web Search（優先）
+    MODEL_FLASH = "gemini-3.1-flash-lite"      # 通常生成・Web Search（優先）
     MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 通常生成（フォールバック）
-    MODEL_SEARCH = "gemini-3.5-flash"          # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
+    MODEL_SEARCH = "gemini-3.1-flash-lite"     # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
+    MODEL_HEAVY = "gemini-3.5-flash"           # 高性能が必要な場合（フォールバック）
     MODEL_PRO = "gemini-3-pro-preview"
     MODEL_TEST = "gemini-2.5-flash"
 
@@ -81,8 +82,8 @@ class GeminiClient:
         )
         print(
             f"[OK] Gemini クライアント初期化完了 (Search: {enable_search}) "
-            f"[text={self.MODEL_FLASH}->{self.MODEL_FLASH_LITE}, "
-            f"search={self.MODEL_SEARCH}->{self.MODEL_FLASH_LITE}, key={search_key_mode}]"
+            f"[text={self.MODEL_FLASH}->{self.MODEL_HEAVY}, "
+            f"search={self.MODEL_SEARCH}->{self.MODEL_HEAVY}, key={search_key_mode}]"
         )
         self._stats = {
             "calls_text": 0,
@@ -96,8 +97,13 @@ class GeminiClient:
     def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
         """使用するモデル列（優先順）。"""
         if use_search:
-            return (GeminiClient.MODEL_SEARCH, GeminiClient.MODEL_FLASH_LITE)
-        return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_FLASH_LITE)
+            # 検索時は Lite を優先し、失敗時に 3.5 Flash へ
+            return (GeminiClient.MODEL_SEARCH, GeminiClient.MODEL_HEAVY)
+        
+        if model_role == "heavy":
+            return (GeminiClient.MODEL_HEAVY, GeminiClient.MODEL_FLASH_LITE)
+            
+        return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_HEAVY)
 
     @staticmethod
     def _is_rate_or_quota_error(e: Exception) -> bool:
