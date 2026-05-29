@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 
 # GeminiClient が src/analysis にあると仮定
 from src.analysis.gemini_client import GeminiClient
+from src.utils.logger import log_kv, timed
 
 class LlmNewsCollector:
     """
@@ -77,53 +78,94 @@ class LlmNewsCollector:
         Returns:
             List[Dict]: ニュース記事のリスト。各辞書には 'title', 'url', 'snippet' などが含まれる。
         """
-        print(f"🔍 LLM Web Search でニュースを検索中: '{query}'")
+        log_kv("🔍 search_news:start", {"num_results": num_results})
         
         try:
-            # 月曜日の朝は週末のニュースも含めるように調整
-            time_range = "72時間以内" if datetime.now().weekday() == 0 else "12時間以内"
-            
-            # GeminiClient の search_news メソッドを呼び出す
-            search_results_json = self.gemini_client.search_news(query=query, time_range=time_range)
+            # 最大24時間まで段階的に延長（ニュース0件 → LLMが捏造しやすくなるため）
+            max_hours = 24
+            if datetime.now().weekday() == 0:
+                candidate_hours = [max_hours]
+            else:
+                candidate_hours = [12, max_hours]
 
-            if not search_results_json or not search_results_json.get("found_articles"):
-                print(f"    ⚠️ ニュースが見つかりませんでした: '{query}'")
-                return []
+            for hours in candidate_hours:
+                time_range = f"{hours}時間以内"
+                log_kv("🕒 search_news:try", {"time_range": time_range})
 
-            # 検索結果から必要な情報を抽出（念のため日時フィルタで古い記事を落とす）
-            hours = 12
-            import re as _re
-            m = _re.search(r"(\d+)\s*時間", time_range)
-            if m:
-                hours = int(m.group(1))
-            jst = timezone(timedelta(hours=9))
-            cutoff_jst = (datetime.now(jst) - timedelta(hours=hours)).replace(tzinfo=None)
+                # GeminiClient の search_news メソッドを呼び出す
+                with timed("🔍 search_news:gemini"):
+                    search_results_json = self.gemini_client.search_news(
+                        query=query, time_range=time_range
+                    )
 
-            news_items = []
-            for i, article in enumerate(search_results_json["found_articles"]):
-                if i >= num_results:
-                    break
-
-                dt = self._parse_news_datetime_jst(article.get("date", ""))
-                # 日付が取れない/パースできない場合は、古い混入を避けるため除外
-                if not dt:
+                if not search_results_json or not search_results_json.get("found_articles"):
+                    print(f"        ⚠️ found_articles が空: '{query}'")
                     continue
-                if dt < cutoff_jst:
-                    continue
-                
-                news_item = {
-                    "title": article.get("title", "タイトルなし"),
-                    "url": article.get("url", "#"),
-                    "snippet": article.get("summary", "要約なし"), # summary を snippet として扱う
-                    "source": article.get("source", "不明"),
-                    "published_at": article.get("date", datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                    "related_ticker": self._clean_ticker(article.get("primary_ticker")),
-                    "related_company_name": (article.get("company_name") or "").strip(),
-                }
-                news_items.append(news_item)
-            
-            print(f"✅ ニュース取得完了: {len(news_items)} 件")
-            return news_items
+
+                # 検索結果から必要な情報を抽出（日時フィルタで古い記事を落とす）
+                jst = timezone(timedelta(hours=9))
+                cutoff_jst = (datetime.now(jst) - timedelta(hours=hours)).replace(tzinfo=None)
+
+                news_items: List[Dict] = []
+                undated_items: List[Dict] = []
+                now_str = datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+                for article in search_results_json["found_articles"]:
+                    if len(news_items) >= num_results:
+                        break
+
+                    # Gemini のキー揺れに備えて複数候補を見る
+                    date_str = (
+                        article.get("date")
+                        or article.get("published_at")
+                        or article.get("published")
+                        or article.get("published_str")
+                        or ""
+                    )
+                    dt = self._parse_news_datetime_jst(date_str)
+
+                    # パースできないものは誤爆防止で除外
+                    if not dt:
+                        # date パース不能だと全落ちしやすいので、全滅時の救済用に退避
+                        if len(undated_items) < num_results:
+                            undated_items.append(
+                                {
+                                    "title": article.get("title", "タイトルなし"),
+                                    "url": article.get("url", "#"),
+                                    "snippet": article.get("summary", "要約なし"),
+                                    "source": article.get("source", "不明"),
+                                    "published_at": now_str,
+                                    "related_ticker": self._clean_ticker(article.get("primary_ticker")),
+                                    "related_company_name": (article.get("company_name") or "").strip(),
+                                }
+                            )
+                        continue
+                    if dt < cutoff_jst:
+                        continue
+
+                    news_item = {
+                        "title": article.get("title", "タイトルなし"),
+                        "url": article.get("url", "#"),
+                        "snippet": article.get("summary", "要約なし"),  # summary を snippet として扱う
+                        "source": article.get("source", "不明"),
+                        "published_at": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "related_ticker": self._clean_ticker(article.get("primary_ticker")),
+                        "related_company_name": (article.get("company_name") or "").strip(),
+                    }
+                    news_items.append(news_item)
+
+                # parsed が0件なら undated から補完
+                if not news_items and undated_items:
+                    print(
+                        f"        ⚠️ dateパース不能が多く、0件防止のため無日付を採用: {len(undated_items)} 件"
+                    )
+                    news_items = undated_items[:num_results]
+
+                log_kv("✅ search_news:done", {"count": len(news_items), "time_range": time_range})
+                if news_items:
+                    return news_items
+
+            print(f"    ⚠️ ニュースが見つかりませんでした（最大{max_hours}時間まで延長）: '{query}'")
+            return []
 
         except Exception as e:
             print(f"❌ ニュース検索中にエラーが発生しました: {e}")

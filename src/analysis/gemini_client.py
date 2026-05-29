@@ -41,7 +41,7 @@ class GeminiClient:
         key = os.getenv("GEMINI_API_KEY_SEARCH") or cls._text_api_key()
         if not os.getenv("GEMINI_API_KEY_SEARCH"):
             print(
-                "⚠️ GEMINI_API_KEY_SEARCH 未設定: "
+                "[WARN] GEMINI_API_KEY_SEARCH 未設定: "
                 "3.5 Flash の Web Search は有料枠が必要なため、検索が失敗する可能性があります"
             )
         return key
@@ -80,10 +80,17 @@ class GeminiClient:
             else "GEMINI_API_KEYと共通"
         )
         print(
-            f"✅ Gemini クライアント初期化完了 (Search: {enable_search}) "
-            f"[text={self.MODEL_FLASH}→{self.MODEL_FLASH_LITE}, "
-            f"search={self.MODEL_SEARCH}→{self.MODEL_FLASH_LITE}, key={search_key_mode}]"
+            f"[OK] Gemini クライアント初期化完了 (Search: {enable_search}) "
+            f"[text={self.MODEL_FLASH}->{self.MODEL_FLASH_LITE}, "
+            f"search={self.MODEL_SEARCH}->{self.MODEL_FLASH_LITE}, key={search_key_mode}]"
         )
+        self._stats = {
+            "calls_text": 0,
+            "calls_search": 0,
+            "json_repair_ok": 0,
+            "json_reparse_ok": 0,
+            "json_retry_search": 0,
+        }
 
     @staticmethod
     def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
@@ -143,6 +150,10 @@ class GeminiClient:
         api_client = (
             self._get_search_client() if search_active else self._get_text_client()
         )
+        if search_active:
+            self._stats["calls_search"] += 1
+        else:
+            self._stats["calls_text"] += 1
 
         last_exc: Optional[Exception] = None
         for mi, model in enumerate(models):
@@ -164,16 +175,16 @@ class GeminiClient:
 
                     # クォータ切れ: 別モデルへ切替、なければ即失敗（長時間リトライしない）
                     if self._is_quota_exhausted(e):
-                        print(f"⚠️ {model} クォータ超過: {e}")
+                        print(f"[WARN] {model} クォータ超過: {e}")
                         if mi + 1 < len(models):
-                            print(f"   → フォールバック {models[mi + 1]} に切り替えます")
+                            print(f"   -> フォールバック {models[mi + 1]} に切り替えます")
                             break
                         raise Exception(f"Gemini API クォータ超過: {e}") from e
 
                     # RPM 等のレート制限 → フォールバック可能なら次モデルへ
                     if self._is_rate_or_quota_error(e) and mi + 1 < len(models):
                         print(
-                            f"⚠️ {model} がレート制限等のため、"
+                            f"[WARN] {model} がレート制限等のため、"
                             f"フォールバック {models[mi + 1]} に切り替えます ({e})"
                         )
                         break
@@ -182,14 +193,14 @@ class GeminiClient:
                     retryable = self._is_overloaded_error(e)
                     if retryable and attempt < max_retries - 1:
                         print(
-                            f"⚠️ {model} 混雑/制限 (試行 {attempt + 1}/{max_retries})。"
+                            f"[WARN] {model} 混雑/制限 (試行 {attempt + 1}/{max_retries})。"
                             f"{current_delay}秒後にリトライ..."
                         )
                         time.sleep(current_delay)
                         continue
 
                     if attempt < max_retries - 1:
-                        print(f"⚠️ エラー発生: {e}。{current_delay}秒後にリトライ...")
+                        print(f"[WARN] エラー発生: {e}。{current_delay}秒後にリトライ...")
                         time.sleep(current_delay)
                         continue
 
@@ -225,7 +236,7 @@ class GeminiClient:
         if not self.enable_search:
             raise Exception("Web Search機能が有効になっていません")
         
-        print("🔍 Web Searchを使用してコンテンツ生成中...")
+        print("[Search] Web Searchを使用してコンテンツ生成中...")
 
         try:
             response_text = self.generate_content(
@@ -243,7 +254,7 @@ class GeminiClient:
                 "raw_response": None 
             }
             
-            print("✅ Web Search結果が含まれている可能性があります")
+            print("[OK] Web Search結果が含まれている可能性があります")
             
             return result
 
@@ -342,24 +353,90 @@ class GeminiClient:
         Returns:
             dict: パースされたJSON
         """
+        def _clean(s: str) -> str:
+            s2 = re.sub(r"```json\s*|```\s*", "", s).strip()
+            return s2.strip()
+
+        def _extract_json_candidate(s: str) -> Optional[str]:
+            """
+            LLM が前後に説明文/引用を付けた場合でも JSON 本体を救出する。
+            - まず配列 [..] を探す
+            - 次にオブジェクト {..} を探す
+            """
+            # 配列優先
+            m = re.search(r"(\[[\s\S]*\])", s)
+            if m:
+                return m.group(1).strip()
+            m = re.search(r"(\{[\s\S]*\})", s)
+            if m:
+                return m.group(1).strip()
+            return None
+
+        def _repair_json_with_text_llm(raw: str) -> Optional[dict]:
+            """
+            Search の生レスポンスが崩れて JSON parse できない場合に、
+            Searchなしのモデルで「JSONだけを抽出/修復」してもらう。
+            ※Search再実行を避けてコストを抑える狙い。
+            """
+            try:
+                # 入力が長すぎると失敗しやすいので上限を設ける（必要なら調整）
+                max_chars = 12000
+                clipped = raw if len(raw) <= max_chars else raw[:max_chars] + "\n...(truncated)\n"
+
+                repair_prompt = f"""次のテキストは、LLMが返した「JSONのつもりの出力」ですが、壊れていて JSON パースに失敗しました。
+あなたの仕事は、内容をできるだけ保持したまま、**純粋なJSON**（オブジェクトまたは配列）だけを出力することです。
+
+ルール:
+- 出力は JSON のみ（前後の説明、Markdown、コードフェンス禁止）
+- 文字列は必ずダブルクォート
+- 不正なトークン（例: 参照番号や脚注）を除去
+- どうしても復元できない部分は null / 空配列 / 空文字 で整合を取る
+
+入力テキスト:
+{clipped}
+"""
+                repaired = self.generate_content(
+                    repair_prompt,
+                    max_retries=2,
+                    retry_delay=5,
+                    use_search=False,
+                    model_role="heavy",
+                )
+                repaired_clean = _clean(repaired)
+                cand = _extract_json_candidate(repaired_clean) or repaired_clean
+                return json.loads(cand)
+            except Exception:
+                return None
+
         try:
-            # ```json ``` などを削除
-            cleaned = re.sub(r'```json\s*|```\s*', '', response).strip()
-            
-            # 前後の不要な文字を削除
-            cleaned = cleaned.strip()
-            
-            return json.loads(cleaned)
-            
+            cleaned = _clean(response)
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                cand = _extract_json_candidate(cleaned)
+                if cand:
+                    parsed = json.loads(cand)
+                    self._stats["json_reparse_ok"] += 1
+                    return parsed
+                raise
+
         except json.JSONDecodeError as e:
-            print(f"⚠️ JSONパース失敗: {e}")
+            print(f"[WARN] JSONパース失敗: {e}")
             print(f"レスポンス（最初の300文字）: {response[:300]}...")
+
+            # まずは Searchなしモデルで JSON修復を試す（再検索より安い）
+            repaired = _repair_json_with_text_llm(response)
+            if repaired is not None:
+                print("[OK] SearchなしモデルでJSON修復に成功（再検索なし）")
+                self._stats["json_repair_ok"] += 1
+                return repaired
             
             # フォールバック: 再試行
             if max_retries > 0:
                 print(f"再試行します... (残り{max_retries}回)")
                 time.sleep(5)
                 if use_search:
+                    self._stats["json_retry_search"] += 1
                     return self.generate_json_with_search(
                         original_prompt, max_retries - 1, model_role=model_role
                     )
@@ -461,6 +538,17 @@ class GeminiClient:
 """
         
         return self.generate_json(prompt, model_role="lite")
+
+    def print_stats(self) -> None:
+        """実行中のAPI呼び出し統計を表示（目安）。"""
+        try:
+            s = getattr(self, "_stats", None) or {}
+            print(
+                "📊 Gemini stats "
+                + " ".join([f"{k}={v}" for k, v in s.items()])
+            )
+        except Exception:
+            pass
     
     def generate_script(
         self,
@@ -544,5 +632,5 @@ if __name__ == "__main__":
     print(ir_result['text'])
     
     print("\n" + "="*60)
-    print("✅ テスト完了")
+    print("[OK] テスト完了")
     print("="*60)

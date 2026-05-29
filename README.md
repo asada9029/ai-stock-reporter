@@ -60,6 +60,8 @@ YOUTUBE_API_KEY=your_youtube_api_key
 - ニュース検索（Google Search）: `gemini-3.5-flash` → `gemini-3.1-flash-lite` + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
 - それ以外（台本・サムネ・JSON 等）: `gemini-3.5-flash` → 制限時 `gemini-3.1-flash-lite` + **`GEMINI_API_KEY`（無料枠）**
 - GitHub Actions: Repository secrets に `GEMINI_API_KEY` と `GEMINI_API_KEY_SEARCH` の両方を登録
+- GitHub Actions の本編（朝・夜）は `--presentation immersive` で生成（ショートは従来レイアウト）
+- ショートA: 株用語解説 / ショートB: 注目銘柄（本編ジョブ直後に同じワークフローで生成）
 
 ## 🚀 実行手順
 
@@ -73,6 +75,11 @@ python run_combined_pipeline.py --type morning_video
 夜動画（イブニングレポート）を生成する場合：
 ```bash
 python run_combined_pipeline.py --type evening_video
+```
+
+本編を immersive で生成する場合（GitHub Actions と同じ演出）：
+```bash
+python main.py --type evening_video --presentation immersive
 ```
 
 ### テスト実行

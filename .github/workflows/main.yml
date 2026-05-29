@@ -88,7 +88,8 @@ jobs:
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
         run: |
-          python main.py --type ${{ steps.video-type.outputs.type }}
+          # 横型本編は immersive（短い画面ラベル・セクションSE・ブリッジ）
+          python main.py --type ${{ steps.video-type.outputs.type }} --presentation immersive
 
       - name: Run Shorts A Pipeline and Upload
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.video_type == 'morning_video' || github.event.inputs.video_type == 'evening_video'))
@@ -99,7 +100,7 @@ jobs:
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
         run: |
-          # 本編のデータを再利用するため、クリーンアップをスキップ
+          # 株用語解説ショート（本編の集約JSONを再利用・クリーンアップはスキップ）
           python main.py --type shorts_a --no-cleanup
 
       - name: Run Shorts B Pipeline and Upload
@@ -111,7 +112,7 @@ jobs:
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
         run: |
-          # 本編のデータを再利用するため、クリーンアップをスキップ
+          # 注目銘柄ショート（本編の集約JSONを再利用・クリーンアップはスキップ）
           python main.py --type shorts_b --no-cleanup
 
       # 一時停止: 動画をartifactに保存しない（再開時は if を削除）

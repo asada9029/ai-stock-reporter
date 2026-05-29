@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from src.data_collection.previous_videos import load_latest_metadata, save_video_metadata
 from src.data_collection.ir_movement_analyzer import IRMovementAnalyzer
 from src.data_collection.news_visual_enricher import NewsVisualEnricher
+from src.utils.logger import log, log_kv, timed
 
 class DataAggregator:
     def __init__(self, output_dir="data/collected_data"):
@@ -40,18 +41,16 @@ class DataAggregator:
         """OG画像（優先）または関連銘柄チャートを visual_image_path に付与。"""
         if not news_list:
             return 0
-        print(f"  🖼️ ニュースビジュアル付与を開始 ({len(news_list)} 件)...")
+        log_kv("🖼️ news_visuals:start", {"count": len(news_list), "tag": tag, "video_type": video_type})
         try:
-            n = self.news_visual_enricher.enrich_list(
-                news_list, video_type, subdir=subdir, tag=tag
-            )
+            with timed("🖼️ news_visuals:enrich"):
+                n = self.news_visual_enricher.enrich_list(
+                    news_list, video_type, subdir=subdir, tag=tag
+                )
         except Exception as e:
-            print(f"  ⚠️ ニュースビジュアル付与をスキップ（集約は継続）: {e}")
+            log(f"⚠️ news_visuals:skip err={e}")
             return 0
-        if n:
-            print(f"  ✅ ニュースビジュアル {n} 件（OG or チャート）")
-        else:
-            print("  ⚠️ ニュースビジュアルは0件（OG/チャートとも取得なし）")
+        log_kv("🖼️ news_visuals:done", {"attached": n})
         return n
 
     def _get_companies_for_sector(self, sector_name: str, num_companies: int = 3) -> list[dict]: # 戻り値の型を修正
@@ -152,17 +151,24 @@ class DataAggregator:
         Args:
             video_type: "morning" または "evening"
         """
-        print(f"データ集約を開始します... (タイプ: {video_type})")
+        log_kv("📦 aggregate:start", {"video_type": video_type})
         aggregated_data = {}
         is_morning = "morning" in video_type
 
         # 1. 市場指標とセクターデータの取得
-        print("市場指標とセクターデータを収集中...")
-        raw_data = self.market_collector.collect_all(video_type=video_type)
+        with timed("📊 market_data:collect_all") as t:
+            raw_data = self.market_collector.collect_all(video_type=video_type)
+            t["attention_news_raw"] = len(raw_data.get("attention_news", []) or [])
         
         # 注目ニュースをルート直下に移動
         aggregated_data["attention_news"] = raw_data.get("attention_news", [])
+        
+        # ニュース取得失敗チェック（GitHub Actions を失敗させるため、空ならエラーを投げる）
+        if not aggregated_data["attention_news"]:
+            raise RuntimeError("注目ニュースの取得に失敗しました（0件）。動画生成を中止します。")
+
         self._enrich_news_visuals(aggregated_data["attention_news"], video_type)
+        log_kv("📰 attention_news", {"count": len(aggregated_data.get("attention_news", []) or [])})
 
         # 主要指数のみを market_indices として保持 (旧 market_and_sector)
         aggregated_data["market_indices"] = raw_data.get("market_indices", {})
@@ -181,10 +187,10 @@ class DataAggregator:
             
             ranking_data = sector_rankings_raw.get("ranking", {})
             target_sectors = []
-            # 上位・下位からそれぞれ最大3つずつピックアップ
-            for sector_info in ranking_data.get("top", [])[:3]:
+            # 上位・下位からそれぞれ最大2つずつピックアップ
+            for sector_info in ranking_data.get("top", [])[:2]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "top", "change": sector_info.get("change")})
-            for sector_info in ranking_data.get("bottom", [])[:3]:
+            for sector_info in ranking_data.get("bottom", [])[:2]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "bottom", "change": sector_info.get("change")})
 
             sector_analysis_list = []
@@ -301,16 +307,16 @@ class DataAggregator:
             
             ranking_data = sector_rankings_raw.get("ranking", {})
             target_sectors = []
-            # 上位・下位からそれぞれ最大3つずつピックアップ
-            for sector_info in ranking_data.get("top", [])[:3]:
+            # 上位・下位からそれぞれ最大2つずつピックアップ
+            for sector_info in ranking_data.get("top", [])[:2]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "top", "change": sector_info.get("change")})
-            for sector_info in ranking_data.get("bottom", [])[:3]:
+            for sector_info in ranking_data.get("bottom", [])[:2]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "bottom", "change": sector_info.get("change")})
 
             sector_analysis_list = []
             if target_sectors:
                 sector_names_str = ", ".join([s["name"] for s in target_sectors if s["name"]])
-                prompt = f"""日本の株式市場における、以下のセクターの代表的な主要企業をそれぞれ3社、会社名とその銘柄コード（例: トヨタ(7203.T)）の形式でJSON形式で教えてください。
+                prompt = f"""日本の株式市場における、以下のセクターの代表的な主要企業をそれぞれ2社、会社名とその銘柄コード（例: トヨタ(7203.T)）の形式でJSON形式で教えてください。
     出力は、セクター名をキーとし、その値は企業のリスト（各企業は辞書形式で "name" と "ticker" を含む）としてください。
     余計な説明や```json```などのマークダウンは不要です。
 
@@ -340,15 +346,22 @@ class DataAggregator:
                             if c.get("name") and c.get("ticker"):
                                 all_companies_for_news.append(c)
 
-                    # 全企業のニュースを一括でLLMに問い合わせ
+                    # 全企業のニュースを一括取得（セクター2×各2銘柄＝最大8社程度）
                     all_companies_news = {}
                     if all_companies_for_news:
-                        print(f"注目企業（全{len(all_companies_for_news)}社）のニュースを一括取得中...")
-                        companies_str = ", ".join([f"{c['name']}({c['ticker']})" for c in all_companies_for_news])
+                        print(
+                            f"注目企業（全{len(all_companies_for_news)}社）のニュースを一括取得中..."
+                        )
+                        companies_str = ", ".join(
+                            [
+                                f"{c['name']}({c['ticker']})"
+                                for c in all_companies_for_news
+                            ]
+                        )
                         news_prompt = f"""以下の企業について、それぞれ過去12時間の最新ニュースを3件ずつ、タイトルと要約を含めてJSON形式で教えてください。
     出力は、提供されたリストの「証券コード（例: 7203.T）」をそのままキーとし、その値はニュースのリスト（各ニュースは辞書形式で "title" と "summary" を含む）としてください。
     銘柄名や余計な文字をキーに含めないでください。
-    余計な説明や```json```などのマークダウンは不要です。
+    余計な説明や```json```などのマークダウンは不要です。JSONオブジェクト1つのみ。
 
     出力例:
     {{
@@ -363,7 +376,11 @@ class DataAggregator:
 
     企業リスト: [{companies_str}]
     """
-                        all_companies_news = self.news_collector.gemini_client.generate_json_with_search(prompt=news_prompt)
+                        all_companies_news = (
+                            self.news_collector.gemini_client.generate_json_with_search(
+                                prompt=news_prompt
+                            )
+                        )
 
                     # データを構造化して集約
                     for sector in target_sectors:

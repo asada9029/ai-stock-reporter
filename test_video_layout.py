@@ -1,17 +1,18 @@
 import os
 import json
 from pathlib import Path
+from immersive_test_utils import resolve_test_image
 from src.video_generation.structured_video_composer import render_scenes_to_video
 
 def create_test_video():
-    print("🚀 レイアウト・データ対応 全パターン総合テスト開始")
+    print("[Layout] 横動画 全パターン総合テスト開始")
     
     # テスト用の出力パス
     output_path = "output/layout_test.mp4"
     assets_dir = "src/assets"
     
-    # テスト用のダミー画像
-    valid_images = ["src/assets/images/studio_main.png"]
+    # テスト用のダミー画像（存在するパスを自動解決）
+    valid_images = [resolve_test_image()]
 
     # シーン構成のモック
     scenes = [
@@ -153,7 +154,7 @@ def create_test_video():
         # }
     ]
 
-    print(f"🎬 シーン数: {len(scenes)} をレンダリング中...")
+    print(f"[Layout] シーン数: {len(scenes)} をレンダリング中...")
     
     # レンダリング実行
     result = render_scenes_to_video(
@@ -163,7 +164,7 @@ def create_test_video():
     )
     
     if result:
-        print(f"✅ 総合テスト動画が生成されました: {result}")
+        print(f"[OK] 総合テスト動画が生成されました: {result}")
         print("\n【確認ポイント】")
         print("1. パターン1: テキストパネルが中央に大きく表示されているか")
         print("2. パターン2: 画像が画面いっぱいに表示されているか")
@@ -173,7 +174,7 @@ def create_test_video():
         print("6. パターン7: 画像4枚が2x2のグリッドに並んでいるか")
         print("7. パターン8: 2行の字幕が画面下部から浮いていて読みやすいか")
     else:
-        print("❌ 動画生成に失敗しました。")
+        print("[NG] 動画生成に失敗しました。")
 
 if __name__ == "__main__":
     create_test_video()
