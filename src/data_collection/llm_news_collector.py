@@ -67,13 +67,29 @@ class LlmNewsCollector:
             return None
         return s
 
-    def search_news(self, query: str, num_results: int = 5) -> List[Dict]:
+    @staticmethod
+    def _default_candidate_hours() -> List[int]:
+        """
+        検索時間窓のデフォルト。
+        月曜朝は米国市場が金曜引け以来のため72時間、それ以外は12→24時間と段階延長。
+        """
+        if datetime.now().weekday() == 0:
+            return [72]
+        return [12, 24]
+
+    def search_news(
+        self,
+        query: str,
+        num_results: int = 5,
+        candidate_hours: Optional[List[int]] = None,
+    ) -> List[Dict]:
         """
         指定されたクエリでWeb検索を行い、ニュース記事を収集します。
         
         Args:
             query (str): 検索クエリ（例: "今日の株式市場の注目ニュース"）
             num_results (int): 取得する検索結果の最大数
+            candidate_hours (Optional[List[int]]): 試行する時間窓（時間）。未指定時は曜日で自動決定。
             
         Returns:
             List[Dict]: ニュース記事のリスト。各辞書には 'title', 'url', 'snippet' などが含まれる。
@@ -81,12 +97,8 @@ class LlmNewsCollector:
         log_kv("🔍 search_news:start", {"num_results": num_results})
         
         try:
-            # 最大24時間まで段階的に延長（ニュース0件 → LLMが捏造しやすくなるため）
-            max_hours = 24
-            if datetime.now().weekday() == 0:
-                candidate_hours = [max_hours]
-            else:
-                candidate_hours = [12, max_hours]
+            if candidate_hours is None:
+                candidate_hours = self._default_candidate_hours()
 
             for hours in candidate_hours:
                 time_range = f"{hours}時間以内"
@@ -164,7 +176,10 @@ class LlmNewsCollector:
                 if news_items:
                     return news_items
 
-            print(f"    ⚠️ ニュースが見つかりませんでした（最大{max_hours}時間まで延長）: '{query}'")
+            print(
+                f"    ⚠️ ニュースが見つかりませんでした"
+                f"（試行窓: {', '.join(str(h) + '時間' for h in candidate_hours)}）: '{query}'"
+            )
             return []
 
         except Exception as e:
