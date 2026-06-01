@@ -1,8 +1,20 @@
 {
     "latest": {
-        "video_id": "auto_2026-05-29T19:48:42.047308",
-        "published_at": "2026-05-29T19:48:42.047308",
+        "video_id": "auto_2026-06-01T21:31:15.781871",
+        "published_at": "2026-06-01T21:31:15.781871",
         "ir_stocks": [
+            {
+                "name": "NTT",
+                "ticker": "9432.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "LIXIL",
                 "ticker": "5938.T",
@@ -10,20 +22,8 @@
                 "ir_date": null
             },
             {
-                "name": "三和ホールディングス",
-                "ticker": "5929.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "日本航空",
-                "ticker": "9201.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ANAホールディングス",
-                "ticker": "9202.T",
+                "name": "ニッパツ",
+                "ticker": "5991.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -40,20 +40,74 @@
                 "ir_date": null
             },
             {
-                "name": "王子ホールディングス",
-                "ticker": "3861.T",
+                "name": "トヨタ自動車",
+                "ticker": "7203.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本製紙",
-                "ticker": "3863.T",
+                "name": "本田技研工業",
+                "ticker": "7267.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-05-29T19:48:42.047308",
+            "published_at": "2026-05-29T19:48:42.047308",
+            "ir_stocks": [
+                {
+                    "name": "LIXIL",
+                    "ticker": "5938.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三和ホールディングス",
+                    "ticker": "5929.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本航空",
+                    "ticker": "9201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ANAホールディングス",
+                    "ticker": "9202.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "王子ホールディングス",
+                    "ticker": "3861.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本製紙",
+                    "ticker": "3863.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-05-28T17:02:00.940004",
             "published_at": "2026-05-28T17:02:00.940004",
