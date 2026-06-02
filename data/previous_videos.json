@@ -1,32 +1,8 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-01T21:31:15.781871",
-        "published_at": "2026-06-01T21:31:15.781871",
+        "video_id": "auto_2026-06-02T20:17:28.441301",
+        "published_at": "2026-06-02T20:17:28.441301",
         "ir_stocks": [
-            {
-                "name": "NTT",
-                "ticker": "9432.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ソフトバンクグループ",
-                "ticker": "9984.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "LIXIL",
-                "ticker": "5938.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ニッパツ",
-                "ticker": "5991.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
             {
                 "name": "INPEX",
                 "ticker": "1605.T",
@@ -40,20 +16,98 @@
                 "ir_date": null
             },
             {
-                "name": "トヨタ自動車",
-                "ticker": "7203.T",
+                "name": "野村ホールディングス",
+                "ticker": "8604.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "本田技研工業",
-                "ticker": "7267.T",
+                "name": "大和証券グループ本社",
+                "ticker": "8601.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "住友電気工業",
+                "ticker": "5802.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "SUMCO",
+                "ticker": "3436.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "東洋製罐グループホールディングス",
+                "ticker": "5901.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-01T21:31:15.781871",
+            "published_at": "2026-06-01T21:31:15.781871",
+            "ir_stocks": [
+                {
+                    "name": "NTT",
+                    "ticker": "9432.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "LIXIL",
+                    "ticker": "5938.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ニッパツ",
+                    "ticker": "5991.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "本田技研工業",
+                    "ticker": "7267.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-05-29T19:48:42.047308",
             "published_at": "2026-05-29T19:48:42.047308",
