@@ -134,20 +134,20 @@ class GeminiClient:
     def generate_content(
         self,
         prompt: str,
-        max_retries: int = 10,
-        retry_delay: int = 30,
+        max_retries: int = 5,
+        retry_delay: int = 10,
         use_search: bool = True,
         model_role: ModelRole = "lite",
     ) -> str:
         """
-        コンテンツ生成（リトライ + レート制限時のモデルフォールバック）
+        コンテンツ生成（サイクル制リトライ: 3.1 -> 3.5 -> 指数バックオフ -> 3.1 -> 3.5 ...）
 
         Args:
             prompt: プロンプト
-            max_retries: 各モデルあたりの最大リトライ回数
-            retry_delay: リトライ間隔の基数（秒）
+            max_retries: 最大サイクル数（デフォルト3）
+            retry_delay: サイクル間のバックオフ基数（秒）
             use_search: Web Searchを使用するか
-            model_role: heavy/lite/search とも 3.5 Flash→3.1 Flash-Lite（search は有料キー）
+            model_role: モデルの役割
         """
         config = self.search_config if use_search and self.enable_search else self.no_search_config
         search_active = use_search and self.enable_search
@@ -162,8 +162,8 @@ class GeminiClient:
             self._stats["calls_text"] += 1
 
         last_exc: Optional[Exception] = None
-        for mi, model in enumerate(models):
-            for attempt in range(max_retries):
+        for cycle in range(max_retries):
+            for model in models:
                 try:
                     response = api_client.models.generate_content(
                         model=model,
@@ -179,42 +179,19 @@ class GeminiClient:
                     if "block" in error_msg:
                         raise Exception(f"コンテンツがブロックされました: {e}") from e
 
-                    # クォータ切れ: 別モデルへ切替、なければ即失敗（長時間リトライしない）
-                    if self._is_quota_exhausted(e):
-                        print(f"[WARN] {model} クォータ超過: {e}")
-                        if mi + 1 < len(models):
-                            print(f"   -> フォールバック {models[mi + 1]} に切り替えます")
-                            break
-                        raise Exception(f"Gemini API クォータ超過: {e}") from e
+                    # クォータ切れや一時的なエラー（503/429等）はログを出して次のモデル/サイクルへ
+                    print(f"[WARN] {model} 失敗 (サイクル {cycle + 1}/{max_retries}): {e}")
+                    
+                    # ハードなクォータ制限（Resource Exhausted）の場合は、
+                    # 別のAPIキーを使っている可能性がある search_client/text_client の切り替えに期待して続行
+            
+            # 1サイクル（全モデル試行）終わっても成功しなかった場合、指数バックオフを入れて次のサイクルへ
+            if cycle < max_retries - 1:
+                current_delay = retry_delay * (2 ** cycle)
+                print(f"   -> サイクル {cycle + 1} 失敗。{current_delay}秒待機して次のサイクルを開始します...")
+                time.sleep(current_delay)
 
-                    # RPM 等のレート制限 → フォールバック可能なら次モデルへ
-                    if self._is_rate_or_quota_error(e) and mi + 1 < len(models):
-                        print(
-                            f"[WARN] {model} がレート制限等のため、"
-                            f"フォールバック {models[mi + 1]} に切り替えます ({e})"
-                        )
-                        break
-
-                    current_delay = retry_delay * (2 ** attempt)
-                    retryable = self._is_overloaded_error(e)
-                    if retryable and attempt < max_retries - 1:
-                        print(
-                            f"[WARN] {model} 混雑/制限 (試行 {attempt + 1}/{max_retries})。"
-                            f"{current_delay}秒後にリトライ..."
-                        )
-                        time.sleep(current_delay)
-                        continue
-
-                    if attempt < max_retries - 1:
-                        print(f"[WARN] エラー発生: {e}。{current_delay}秒後にリトライ...")
-                        time.sleep(current_delay)
-                        continue
-
-                    raise Exception(f"Gemini API エラー: {e}") from e
-
-        if last_exc:
-            raise Exception(f"Gemini API エラー: {last_exc}") from last_exc
-        raise Exception("最大リトライ回数を超えました")
+        raise Exception(f"全 {max_retries} サイクルが失敗しました。最後のエラー: {last_exc}")
     
     def generate_content_with_search(
         self,

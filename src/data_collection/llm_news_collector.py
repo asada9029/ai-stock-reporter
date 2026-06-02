@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta, timezone
 
@@ -104,19 +105,24 @@ class LlmNewsCollector:
                 time_range = f"{hours}時間以内"
                 log_kv("🕒 search_news:try", {"time_range": time_range})
 
+                # クエリ内の「過去XX時間」「XX時間以内」という表現を現在の hours に置換する
+                # これにより、再試行時にクエリと検索窓の矛盾を解消する
+                current_query = re.sub(r'(\d+)\s*時間', f'{hours}時間', query)
+
                 # GeminiClient の search_news メソッドを呼び出す
                 with timed("🔍 search_news:gemini"):
                     search_results_json = self.gemini_client.search_news(
-                        query=query, time_range=time_range
+                        query=current_query, time_range=time_range
                     )
 
                 if not search_results_json or not search_results_json.get("found_articles"):
-                    print(f"        ⚠️ found_articles が空: '{query}'")
+                    print(f"        ⚠️ found_articles が空: '{current_query}'")
                     continue
 
                 # 検索結果から必要な情報を抽出（日時フィルタで古い記事を落とす）
                 jst = timezone(timedelta(hours=9))
-                cutoff_jst = (datetime.now(jst) - timedelta(hours=hours)).replace(tzinfo=None)
+                # フィルタに2時間のバッファを持たせる（Geminiの検索結果が境界線上の場合に救うため）
+                cutoff_jst = (datetime.now(jst) - timedelta(hours=hours + 2)).replace(tzinfo=None)
 
                 news_items: List[Dict] = []
                 undated_items: List[Dict] = []
