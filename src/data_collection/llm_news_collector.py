@@ -78,6 +78,17 @@ class LlmNewsCollector:
             return [72]
         return [12, 24]
 
+    @staticmethod
+    def _clean_query(query: str) -> str:
+        """
+        クエリから余計な空白や改行を削除し、1行にまとめる。
+        """
+        if not query:
+            return ""
+        # 改行と連続する空白を1つの空白に置換
+        cleaned = re.sub(r'\s+', ' ', query).strip()
+        return cleaned
+
     def search_news(
         self,
         query: str,
@@ -101,13 +112,16 @@ class LlmNewsCollector:
             if candidate_hours is None:
                 candidate_hours = self._default_candidate_hours()
 
+            # クエリをクリーンアップ
+            base_query = self._clean_query(query)
+
             for hours in candidate_hours:
                 time_range = f"{hours}時間以内"
                 log_kv("🕒 search_news:try", {"time_range": time_range})
 
                 # クエリ内の「過去XX時間」「XX時間以内」という表現を現在の hours に置換する
                 # これにより、再試行時にクエリと検索窓の矛盾を解消する
-                current_query = re.sub(r'(\d+)\s*時間', f'{hours}時間', query)
+                current_query = re.sub(r'(\d+)\s*時間', f'{hours}時間', base_query)
 
                 # GeminiClient の search_news メソッドを呼び出す
                 with timed("🔍 search_news:gemini"):
@@ -115,8 +129,22 @@ class LlmNewsCollector:
                         query=current_query, time_range=time_range
                     )
 
-                if not search_results_json or not search_results_json.get("found_articles"):
-                    print(f"        ⚠️ found_articles が空: '{current_query}'")
+                # もし0件なら、よりシンプルなクエリで再試行（同じ時間窓内で1回だけ）
+                articles = search_results_json.get("found_articles", []) if search_results_json else []
+                if not articles:
+                    # クエリから市場を判定
+                    market_label = "米国" if "米国" in current_query or "US" in current_query.upper() else "日本"
+                    simple_query = f"{market_label}の株式市場に影響を与える最新の重要ニュース（経済、政治、国際情勢、技術動向）"
+                    print(f"        ⚠️ 0件のため、簡易クエリで再試行します: '{simple_query}'")
+                    
+                    with timed("🔍 search_news:gemini:simple"):
+                        search_results_json = self.gemini_client.search_news(
+                            query=simple_query, time_range=time_range
+                        )
+                        articles = search_results_json.get("found_articles", []) if search_results_json else []
+
+                if not articles:
+                    print(f"        ⚠️ 簡易クエリでも 0件でした: '{current_query}'")
                     continue
 
                 # 検索結果から必要な情報を抽出（日時フィルタで古い記事を落とす）
@@ -141,6 +169,9 @@ class LlmNewsCollector:
                     )
                     dt = self._parse_news_datetime_jst(date_str)
 
+                    # デバッグ用: パース結果とフィルタ条件を表示
+                    # print(f"        DEBUG: Article '{article.get('title')[:30]}...' date='{date_str}' parsed='{dt}' cutoff='{cutoff_jst}'")
+
                     # パースできないものは誤爆防止で除外
                     if not dt:
                         # date パース不能だと全落ちしやすいので、全滅時の救済用に退避
@@ -157,7 +188,21 @@ class LlmNewsCollector:
                                 }
                             )
                         continue
+                    
                     if dt < cutoff_jst:
+                        # フィルタされた記事も、全滅時の救済用に一応保持しておく（ただし日付はそのまま）
+                        if len(undated_items) < num_results:
+                            undated_items.append(
+                                {
+                                    "title": article.get("title", "タイトルなし"),
+                                    "url": article.get("url", "#"),
+                                    "snippet": article.get("summary", "要約なし"),
+                                    "source": article.get("source", "不明"),
+                                    "published_at": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                                    "related_ticker": self._clean_ticker(article.get("primary_ticker")),
+                                    "related_company_name": (article.get("company_name") or "").strip(),
+                                }
+                            )
                         continue
 
                     news_item = {
@@ -174,7 +219,7 @@ class LlmNewsCollector:
                 # parsed が0件なら undated から補完
                 if not news_items and undated_items:
                     print(
-                        f"        ⚠️ dateパース不能が多く、0件防止のため無日付を採用: {len(undated_items)} 件"
+                        f"        ⚠️ 有効な日付の記事が 0件のため、フィルタ外または日付不明の記事を採用: {len(undated_items)} 件"
                     )
                     news_items = undated_items[:num_results]
 
