@@ -1,15 +1,5 @@
 [
   {
-    "date": "2026-03-12T17:40:37.072528",
-    "video_type": "evening_video",
-    "title": "【乗り遅れ厳禁】5.5万突破！利上げの極意"
-  },
-  {
-    "date": "2026-03-13T06:10:27.965151",
-    "video_type": "morning_video",
-    "title": "【利下げ0】雇用破壊と原油高。15兆円還付で逆転せよ"
-  },
-  {
     "date": "2026-03-13T16:49:32.623791",
     "video_type": "evening_video",
     "title": "【159円突破】日経5.3万。急落で掴む株"
@@ -498,5 +488,15 @@
     "date": "2026-06-02T20:17:29.683032",
     "video_type": "evening_video",
     "title": "【エヌビディア最高値】AI相場が再点火"
+  },
+  {
+    "date": "2026-06-03T20:40:04.684194",
+    "video_type": "evening_video",
+    "title": "【関税の衝撃】米国60カ国へ牙を剥く"
+  },
+  {
+    "date": "2026-06-04T19:39:29.800035",
+    "video_type": "evening_video",
+    "title": "【TSMC増強】AI半導体供給網が激変"
   }
 ]
