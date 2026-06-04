@@ -1,29 +1,41 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-02T20:17:28.441301",
-        "published_at": "2026-06-02T20:17:28.441301",
+        "video_id": "auto_2026-06-04T19:39:28.622634",
+        "published_at": "2026-06-04T19:39:28.622634",
         "ir_stocks": [
             {
-                "name": "INPEX",
-                "ticker": "1605.T",
+                "name": "日本郵船",
+                "ticker": "9101.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "石油資源開発",
-                "ticker": "1662.T",
+                "name": "商船三井",
+                "ticker": "9104.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "野村ホールディングス",
-                "ticker": "8604.T",
+                "name": "三菱UFJフィナンシャル・グループ",
+                "ticker": "8306.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "大和証券グループ本社",
-                "ticker": "8601.T",
+                "name": "三井住友フィナンシャルグループ",
+                "ticker": "8316.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "NTT",
+                "ticker": "9432.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -38,22 +50,118 @@
                 "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
-            },
-            {
-                "name": "SUMCO",
-                "ticker": "3436.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "東洋製罐グループホールディングス",
-                "ticker": "5901.T",
-                "noted_ir": null,
-                "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-03T20:40:03.542501",
+            "published_at": "2026-06-03T20:40:03.542501",
+            "ir_stocks": [
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本ガイシ",
+                    "ticker": "5333.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "NTT",
+                    "ticker": "9432.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "武田薬品工業",
+                    "ticker": "4502.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "中外製薬",
+                    "ticker": "4519.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
+        {
+            "video_id": "auto_2026-06-02T20:17:28.441301",
+            "published_at": "2026-06-02T20:17:28.441301",
+            "ir_stocks": [
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "野村ホールディングス",
+                    "ticker": "8604.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "大和証券グループ本社",
+                    "ticker": "8601.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "SUMCO",
+                    "ticker": "3436.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東洋製罐グループホールディングス",
+                    "ticker": "5901.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-01T21:31:15.781871",
             "published_at": "2026-06-01T21:31:15.781871",
