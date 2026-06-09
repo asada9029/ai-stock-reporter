@@ -1,8 +1,20 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-08T20:38:29.209247",
-        "published_at": "2026-06-08T20:38:29.209247",
+        "video_id": "auto_2026-06-09T19:31:55.743913",
+        "published_at": "2026-06-09T19:31:55.743913",
         "ir_stocks": [
+            {
+                "name": "ソニーグループ",
+                "ticker": "6758.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "日立製作所",
+                "ticker": "6501.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "東京海上ホールディングス",
                 "ticker": "8766.T",
@@ -16,44 +28,86 @@
                 "ir_date": null
             },
             {
-                "name": "味の素",
-                "ticker": "2802.T",
+                "name": "ENEOSホールディングス",
+                "ticker": "5020.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "キリンホールディングス",
-                "ticker": "2503.T",
+                "name": "出光興産",
+                "ticker": "5019.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
+                "name": "INPEX",
+                "ticker": "1605.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三菱マテリアル",
-                "ticker": "5711.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ソニーグループ",
-                "ticker": "6758.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "日立製作所",
-                "ticker": "6501.T",
+                "name": "石油資源開発",
+                "ticker": "1662.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-08T20:38:29.209247",
+            "published_at": "2026-06-08T20:38:29.209247",
+            "ir_stocks": [
+                {
+                    "name": "東京海上ホールディングス",
+                    "ticker": "8766.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "MS&ADインシュアランスグループホールディングス",
+                    "ticker": "8725.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "味の素",
+                    "ticker": "2802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "キリンホールディングス",
+                    "ticker": "2503.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱マテリアル",
+                    "ticker": "5711.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソニーグループ",
+                    "ticker": "6758.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日立製作所",
+                    "ticker": "6501.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-05T19:47:10.722714",
             "published_at": "2026-06-05T19:47:10.722714",
