@@ -1,8 +1,44 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-11T20:24:42.540617",
-        "published_at": "2026-06-11T20:24:42.540617",
+        "video_id": "auto_2026-06-12T20:00:39.430957",
+        "published_at": "2026-06-12T20:00:39.430957",
         "ir_stocks": [
+            {
+                "name": "住友電気工業",
+                "ticker": "5802.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "コマツ",
+                "ticker": "6301.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ダイキン工業",
+                "ticker": "6367.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "オリエンタルランド",
+                "ticker": "4661.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "INPEX",
                 "ticker": "1605.T",
@@ -14,46 +50,64 @@
                 "ticker": "1662.T",
                 "noted_ir": null,
                 "ir_date": null
-            },
-            {
-                "name": "味の素",
-                "ticker": "2802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "キリンホールディングス",
-                "ticker": "2503.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "トヨタ自動車",
-                "ticker": "7203.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "本田技研工業",
-                "ticker": "7267.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "野村ホールディングス",
-                "ticker": "8604.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "大和証券グループ本社",
-                "ticker": "8601.T",
-                "noted_ir": null,
-                "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-11T20:24:42.540617",
+            "published_at": "2026-06-11T20:24:42.540617",
+            "ir_stocks": [
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "味の素",
+                    "ticker": "2802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "キリンホールディングス",
+                    "ticker": "2503.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "本田技研工業",
+                    "ticker": "7267.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "野村ホールディングス",
+                    "ticker": "8604.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "大和証券グループ本社",
+                    "ticker": "8601.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-10T19:52:02.256255",
             "published_at": "2026-06-10T19:52:02.256255",
