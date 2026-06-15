@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-03-25T17:42:18.181981",
-    "video_type": "evening_video",
-    "title": "【SBG 8％急騰】ARM自社AI。見逃すと損する稼ぎ時"
-  },
-  {
     "date": "2026-03-26T05:39:23.962677",
     "video_type": "morning_video",
     "title": "【金20%暴落】資産10倍を奪取する投資術"
@@ -498,5 +493,10 @@
     "date": "2026-06-15T22:01:19.867645",
     "video_type": "evening_video",
     "title": "【日経平均3297円高】歴史的暴騰の正体"
+  },
+  {
+    "date": "2026-06-16T07:17:34.821835",
+    "video_type": "morning_video",
+    "title": "【S&P500躍進】新高値の裏で起きている構造変化"
   }
 ]
