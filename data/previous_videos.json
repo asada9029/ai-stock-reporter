@@ -1,59 +1,113 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-17T20:30:08.788003",
-        "published_at": "2026-06-17T20:30:08.788003",
+        "video_id": "auto_2026-06-18T20:11:39.594183",
+        "published_at": "2026-06-18T20:11:39.594183",
         "ir_stocks": [
             {
-                "name": "AGC",
-                "ticker": "5201.T",
+                "name": "三菱UFJフィナンシャル・グループ",
+                "ticker": "8306.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本特殊陶業",
-                "ticker": "5334.T",
+                "name": "三井住友フィナンシャルグループ",
+                "ticker": "8316.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "コマツ",
-                "ticker": "6301.T",
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ダイキン工業",
-                "ticker": "6367.T",
+                "name": "オリエンタルランド",
+                "ticker": "4661.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本郵船",
-                "ticker": "9101.T",
+                "name": "住友電気工業",
+                "ticker": "5802.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "商船三井",
-                "ticker": "9104.T",
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本製鉄",
-                "ticker": "5401.T",
+                "name": "ENEOSホールディングス",
+                "ticker": "5020.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "JFEホールディングス",
-                "ticker": "5411.T",
+                "name": "出光興産",
+                "ticker": "5019.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-17T20:30:08.788003",
+            "published_at": "2026-06-17T20:30:08.788003",
+            "ir_stocks": [
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本特殊陶業",
+                    "ticker": "5334.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "コマツ",
+                    "ticker": "6301.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ダイキン工業",
+                    "ticker": "6367.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本郵船",
+                    "ticker": "9101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "商船三井",
+                    "ticker": "9104.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本製鉄",
+                    "ticker": "5401.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "JFEホールディングス",
+                    "ticker": "5411.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-16T21:04:39.672230",
             "published_at": "2026-06-16T21:04:39.672230",
@@ -751,60 +805,6 @@
                 {
                     "name": "日本製紙",
                     "ticker": "3863.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-05-28T17:02:00.940004",
-            "published_at": "2026-05-28T17:02:00.940004",
-            "ir_stocks": [
-                {
-                    "name": "LIXIL",
-                    "ticker": "5938.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "東洋製罐グループホールディングス",
-                    "ticker": "5901.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "王子ホールディングス",
-                    "ticker": "3861.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本製紙",
-                    "ticker": "3863.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "東京海上ホールディングス",
-                    "ticker": "8766.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "第一生命ホールディングス",
-                    "ticker": "8750.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "東京海上ホールディングス",
-                    "ticker": "8766.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ＭＳ＆ＡＤインシュアランスグループホールディングス",
-                    "ticker": "8725.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
