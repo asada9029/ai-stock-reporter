@@ -1,7 +1,7 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-19T20:16:58.913178",
-        "published_at": "2026-06-19T20:16:58.913178",
+        "video_id": "auto_2026-06-22T21:47:10.956549",
+        "published_at": "2026-06-22T21:47:10.956549",
         "ir_stocks": [
             {
                 "name": "住友電気工業",
@@ -16,44 +16,98 @@
                 "ir_date": null
             },
             {
-                "name": "ENEOSホールディングス",
-                "ticker": "5020.T",
+                "name": "AGC",
+                "ticker": "5201.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "出光興産",
-                "ticker": "5019.T",
+                "name": "日本ガイシ",
+                "ticker": "5333.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三菱UFJフィナンシャル・グループ",
-                "ticker": "8306.T",
+                "name": "三井不動産",
+                "ticker": "8801.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三井住友フィナンシャルグループ",
-                "ticker": "8316.T",
+                "name": "三菱地所",
+                "ticker": "8802.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "テルモ",
-                "ticker": "4543.T",
+                "name": "INPEX",
+                "ticker": "1605.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "HOYA",
-                "ticker": "7741.T",
+                "name": "石油資源開発",
+                "ticker": "1662.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-19T20:16:58.913178",
+            "published_at": "2026-06-19T20:16:58.913178",
+            "ir_stocks": [
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ENEOSホールディングス",
+                    "ticker": "5020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "出光興産",
+                    "ticker": "5019.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱UFJフィナンシャル・グループ",
+                    "ticker": "8306.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三井住友フィナンシャルグループ",
+                    "ticker": "8316.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "テルモ",
+                    "ticker": "4543.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "HOYA",
+                    "ticker": "7741.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-18T20:11:39.594183",
             "published_at": "2026-06-18T20:11:39.594183",
@@ -751,60 +805,6 @@
                 {
                     "name": "東洋製罐グループホールディングス",
                     "ticker": "5901.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-06-01T21:31:15.781871",
-            "published_at": "2026-06-01T21:31:15.781871",
-            "ir_stocks": [
-                {
-                    "name": "NTT",
-                    "ticker": "9432.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ソフトバンクグループ",
-                    "ticker": "9984.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "LIXIL",
-                    "ticker": "5938.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ニッパツ",
-                    "ticker": "5991.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "トヨタ自動車",
-                    "ticker": "7203.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "本田技研工業",
-                    "ticker": "7267.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
