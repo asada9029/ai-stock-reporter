@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-02T17:08:08.097882",
-    "video_type": "evening_video",
-    "title": "【ナイキ15%大暴落】米景気、急減速の怪。米国株の「罠」を見抜け"
-  },
-  {
     "date": "2026-04-03T06:03:47.071883",
     "video_type": "morning_video",
     "title": "【テスラ5.4%急落】販売未達。EVバブル崩壊か"
@@ -498,5 +493,10 @@
     "date": "2026-06-24T06:31:24.738243",
     "video_type": "morning_video",
     "title": "【S&P500急落】米インフレ再燃の警告"
+  },
+  {
+    "date": "2026-06-24T19:08:51.628653",
+    "video_type": "evening_video",
+    "title": "【Alphabet採用】ダウ構成銘柄の革命的交代劇"
   }
 ]

@@ -1,29 +1,47 @@
 {
     "latest": {
-        "video_id": "auto_2026-06-23T19:32:54.748335",
-        "published_at": "2026-06-23T19:32:54.748335",
+        "video_id": "auto_2026-06-24T19:08:50.279467",
+        "published_at": "2026-06-24T19:08:50.279467",
         "ir_stocks": [
             {
-                "name": "日本水産",
-                "ticker": "1332.T",
+                "name": "武田薬品工業",
+                "ticker": "4502.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "マルハニチロ",
-                "ticker": "1333.T",
+                "name": "アステラス製薬",
+                "ticker": "4503.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "JR東日本",
-                "ticker": "9020.T",
+                "name": "ANAホールディングス",
+                "ticker": "9202.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "JR東海",
-                "ticker": "9022.T",
+                "name": "日本航空",
+                "ticker": "9201.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "MS&ADインシュアランスグループホールディングス",
+                "ticker": "8725.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "住友電気工業",
+                "ticker": "5802.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -32,28 +50,64 @@
                 "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
-            },
-            {
-                "name": "三菱マテリアル",
-                "ticker": "5711.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ソニーグループ",
-                "ticker": "6758.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "日立製作所",
-                "ticker": "6501.T",
-                "noted_ir": null,
-                "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-06-23T19:32:54.748335",
+            "published_at": "2026-06-23T19:32:54.748335",
+            "ir_stocks": [
+                {
+                    "name": "日本水産",
+                    "ticker": "1332.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "マルハニチロ",
+                    "ticker": "1333.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "JR東日本",
+                    "ticker": "9020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "JR東海",
+                    "ticker": "9022.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱マテリアル",
+                    "ticker": "5711.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソニーグループ",
+                    "ticker": "6758.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日立製作所",
+                    "ticker": "6501.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-06-22T21:47:10.956549",
             "published_at": "2026-06-22T21:47:10.956549",
@@ -751,60 +805,6 @@
                 {
                     "name": "住友金属鉱山",
                     "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-06-03T20:40:03.542501",
-            "published_at": "2026-06-03T20:40:03.542501",
-            "ir_stocks": [
-                {
-                    "name": "住友電気工業",
-                    "ticker": "5802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "AGC",
-                    "ticker": "5201.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本ガイシ",
-                    "ticker": "5333.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "NTT",
-                    "ticker": "9432.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ソフトバンクグループ",
-                    "ticker": "9984.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "武田薬品工業",
-                    "ticker": "4502.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "中外製薬",
-                    "ticker": "4519.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
