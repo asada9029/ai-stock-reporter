@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-06T17:23:33.201260",
-    "video_type": "evening_video",
-    "title": "【マスク氏のTERAFAB】半導体株の「激変」に備えよ"
-  },
-  {
     "date": "2026-04-07T05:40:11.007851",
     "video_type": "morning_video",
     "title": "【S&P500：6611】中東停戦。米株逆襲"
@@ -498,5 +493,10 @@
     "date": "2026-06-25T19:05:46.807596",
     "video_type": "evening_video",
     "title": "【日経平均3191円高】未知の急騰"
+  },
+  {
+    "date": "2026-06-26T06:25:47.953479",
+    "video_type": "morning_video",
+    "title": "【エヌビディア再編】サプライヤー争奪戦の裏側"
   }
 ]
