@@ -1,59 +1,113 @@
 {
     "latest": {
-        "video_id": "auto_2026-07-02T18:57:33.977886",
-        "published_at": "2026-07-02T18:57:33.977886",
+        "video_id": "auto_2026-07-03T18:56:04.959175",
+        "published_at": "2026-07-03T18:56:04.959175",
         "ir_stocks": [
             {
-                "name": "日本航空",
-                "ticker": "9201.T",
+                "name": "LIXIL",
+                "ticker": "5938.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ANAホールディングス",
-                "ticker": "9202.T",
+                "name": "三和ホールディングス",
+                "ticker": "5929.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "東京海上ホールディングス",
-                "ticker": "8766.T",
+                "name": "東レ",
+                "ticker": "3402.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "MS&ADインシュアランスグループホールディングス",
-                "ticker": "8725.T",
+                "name": "帝人",
+                "ticker": "3401.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
+                "name": "NTT",
+                "ticker": "9432.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三菱マテリアル",
-                "ticker": "5711.T",
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ソニーグループ",
-                "ticker": "6758.T",
+                "name": "ENEOSホールディングス",
+                "ticker": "5020.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日立製作所",
-                "ticker": "6501.T",
+                "name": "出光興産",
+                "ticker": "5019.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-07-02T18:57:33.977886",
+            "published_at": "2026-07-02T18:57:33.977886",
+            "ir_stocks": [
+                {
+                    "name": "日本航空",
+                    "ticker": "9201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ANAホールディングス",
+                    "ticker": "9202.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東京海上ホールディングス",
+                    "ticker": "8766.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "MS&ADインシュアランスグループホールディングス",
+                    "ticker": "8725.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱マテリアル",
+                    "ticker": "5711.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソニーグループ",
+                    "ticker": "6758.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日立製作所",
+                    "ticker": "6501.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-07-01T19:42:49.785863",
             "published_at": "2026-07-01T19:42:49.785863",
@@ -751,60 +805,6 @@
                 {
                     "name": "石油資源開発",
                     "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-06-11T20:24:42.540617",
-            "published_at": "2026-06-11T20:24:42.540617",
-            "ir_stocks": [
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "味の素",
-                    "ticker": "2802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "キリンホールディングス",
-                    "ticker": "2503.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "トヨタ自動車",
-                    "ticker": "7203.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "本田技研工業",
-                    "ticker": "7267.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "野村ホールディングス",
-                    "ticker": "8604.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "大和証券グループ本社",
-                    "ticker": "8601.T",
                     "noted_ir": null,
                     "ir_date": null
                 }

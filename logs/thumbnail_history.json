@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-13T17:52:49.111685",
-    "video_type": "evening_video",
-    "title": "【交渉白紙】バンス氏の宣告。原油105ドル"
-  },
-  {
     "date": "2026-04-14T05:55:05.615610",
     "video_type": "morning_video",
     "title": "【エヌビディア買収工作】デル・HP統合説。AIの次へ。"
@@ -498,5 +493,10 @@
     "date": "2026-07-03T05:58:09.337767",
     "video_type": "morning_video",
     "title": "【テスラ納車台数】予想超えの反撃開始"
+  },
+  {
+    "date": "2026-07-03T18:56:06.641993",
+    "video_type": "evening_video",
+    "title": "【TSMC新工場】供給網の主導権が日本へ"
   }
 ]
