@@ -57,8 +57,13 @@ YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
 **Gemini モデル・APIキー方針**
-- ニュース検索（Google Search）: `gemini-3.1-flash-lite` → `gemini-3.5-flash` (フォールバック) + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
-- それ以外（台本・サムネ・JSON 等）: `gemini-3.1-flash-lite` → `gemini-3.5-flash` (フォールバック) + **`GEMINI_API_KEY`（無料枠）**
+- 全タスク共通: **`gemini-3.1-flash-lite`（GA・安定版）のみ**（preview / 3.5-flash は使わない）
+- ニュース検索（Google Search）: 上記 + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
+- それ以外（台本・サムネ・JSON 等）: 上記 + **`GEMINI_API_KEY`（無料枠）**
+
+**横型本編の尺ポリシー**（`src/config/video_duration.py` が単一の真実源）
+- LLM・`video_structure.json` 共通の目標: **20分（1200秒）**
+- 公開最低ライン（推定尺）: 朝 **7分** / 夜 **9分** — 未満なら台本を最大 **3回** まで再生成（GHA は失敗）
 - GitHub Actions: Repository secrets に `GEMINI_API_KEY` と `GEMINI_API_KEY_SEARCH` の両方を登録
 - GitHub Actions の本編（朝・夜）は `--presentation immersive` で生成（ショートは従来レイアウト）
 - ショートA: 株用語解説 / ショートB: 注目銘柄（本編ジョブ直後に同じワークフローで生成）

@@ -17,11 +17,11 @@ ModelRole = Literal["heavy", "lite", "search"]
 class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
-    # モデル定数
-    MODEL_FLASH = "gemini-3.1-flash-lite"      # 通常生成・Web Search（優先）
-    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 通常生成（フォールバック）
-    MODEL_SEARCH = "gemini-3.1-flash-lite"     # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
-    MODEL_HEAVY = "gemini-3.5-flash"           # 高性能が必要な場合（フォールバック）
+    # モデル定数（GA の 3.1 Flash-Lite のみ。preview / 3.5-flash は使わない）
+    MODEL_FLASH = "gemini-3.1-flash-lite"
+    MODEL_HEAVY = "gemini-3.1-flash-lite"
+    MODEL_SEARCH = "gemini-3.1-flash-lite"  # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
+    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 後方互換エイリアス
     MODEL_PRO = "gemini-3-pro-preview"
     MODEL_TEST = "gemini-2.5-flash"
 
@@ -38,12 +38,12 @@ class GeminiClient:
 
     @classmethod
     def _search_api_key(cls) -> str:
-        # 3.5 の Grounding は有料枠のみ。本番は GEMINI_API_KEY_SEARCH を推奨
+        # Grounding 付き検索は有料枠が必要なことが多い。本番は GEMINI_API_KEY_SEARCH を推奨
         key = os.getenv("GEMINI_API_KEY_SEARCH") or cls._text_api_key()
         if not os.getenv("GEMINI_API_KEY_SEARCH"):
             print(
                 "[WARN] GEMINI_API_KEY_SEARCH 未設定: "
-                "3.5 Flash の Web Search は有料枠が必要なため、検索が失敗する可能性があります"
+                "Web Search が有料枠を要求する場合、検索が失敗する可能性があります"
             )
         return key
 
@@ -82,8 +82,7 @@ class GeminiClient:
         )
         print(
             f"[OK] Gemini クライアント初期化完了 (Search: {enable_search}) "
-            f"[text={self.MODEL_FLASH}->{self.MODEL_HEAVY}, "
-            f"search={self.MODEL_SEARCH}->{self.MODEL_HEAVY}, key={search_key_mode}]"
+            f"[model={self.MODEL_FLASH}, key={search_key_mode}]"
         )
         self._stats = {
             "calls_text": 0,
@@ -95,15 +94,8 @@ class GeminiClient:
 
     @staticmethod
     def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
-        """使用するモデル列（優先順）。"""
-        if use_search:
-            # 検索時は Lite を優先し、失敗時に 3.5 Flash へ
-            return (GeminiClient.MODEL_SEARCH, GeminiClient.MODEL_HEAVY)
-        
-        if model_role == "heavy":
-            return (GeminiClient.MODEL_HEAVY, GeminiClient.MODEL_FLASH_LITE)
-            
-        return (GeminiClient.MODEL_FLASH, GeminiClient.MODEL_HEAVY)
+        """使用するモデル（GA の 3.1 Flash-Lite。失敗時は同一モデルでサイクルリトライ）。"""
+        return (GeminiClient.MODEL_FLASH,)
 
     @staticmethod
     def _is_rate_or_quota_error(e: Exception) -> bool:
@@ -140,7 +132,7 @@ class GeminiClient:
         model_role: ModelRole = "lite",
     ) -> str:
         """
-        コンテンツ生成（サイクル制リトライ: 3.1 -> 3.5 -> 指数バックオフ -> 3.1 -> 3.5 ...）
+        コンテンツ生成（サイクル制リトライ: gemini-3.1-flash-lite + 指数バックオフ）
 
         Args:
             prompt: プロンプト
