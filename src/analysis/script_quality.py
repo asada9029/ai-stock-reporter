@@ -163,12 +163,14 @@ def evaluate_script_quality(
 
 
 def optional_section_keys_to_skip(analysis_data: dict, video_type: str) -> Set[str]:
-    """データが無いセクションは必須チェックから外す。"""
+    """データが無い、または台本に含めなくてよいセクションをチェック対象外にする。"""
     skip: Set[str] = set()
     if "evening" in video_type:
+        # prev_ir はデータがあっても LLM が省略しがちなため常に任意扱い
+        skip.add("prev_ir_tracking")
         prev = analysis_data.get("prev_ir_analysis") or []
         if not prev:
-            skip.add("prev_ir_tracking")
+            pass  # 上記で既にスキップ
     return skip
 
 
