@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-14T17:30:18.257641",
-    "video_type": "evening_video",
-    "title": "【バフェットの急襲】東京海上に追加出資。損保株の買い場到来"
-  },
-  {
     "date": "2026-04-15T05:52:19.539178",
     "video_type": "morning_video",
     "title": "【S&P500：6967】7000目前。富を逃すな"
@@ -498,5 +493,10 @@
     "date": "2026-07-06T20:28:44.544072",
     "video_type": "evening_video",
     "title": "【全固体電池】トヨタ量産技術の真実"
+  },
+  {
+    "date": "2026-07-09T05:58:19.648224",
+    "video_type": "morning_video",
+    "title": "【NVIDIA出荷開始】AI覇権が再燃"
   }
 ]
