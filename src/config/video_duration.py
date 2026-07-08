@@ -64,6 +64,26 @@ def format_duration_prompt_rule() -> str:
     )
 
 
+def format_section_duration_hint(video_structure: dict) -> str:
+    """構成案の duration 比率に基づき、セクション別の厚み目安をプロンプト用に整形。"""
+    sections = video_structure.get("sections") or []
+    if not sections:
+        return ""
+    total = sum(int(s.get("duration", 0)) for s in sections) or 1
+    lines = [
+        "- 【セクション別の厚み（全セクション均等ではない）】: "
+        "構成案の duration が大きいセクションほどシーン数・speech_text を厚くしてください。"
+        "opening / closing は簡潔に、ニュース・セクター・展望など中核セクションを厚めに。",
+    ]
+    for sec in sections:
+        name = sec.get("name", "?")
+        dur = int(sec.get("duration", 0))
+        pct = dur / total * 100
+        weight = "厚め" if pct >= 12 else "簡潔"
+        lines.append(f"  - {name}: {weight}（枠 {dur}秒 / 全体の {pct:.0f}%）")
+    return "\n".join(lines)
+
+
 def scale_section_durations(
     sections: List[dict], target_total: int = TARGET_SECONDS_HORIZONTAL
 ) -> List[dict]:
