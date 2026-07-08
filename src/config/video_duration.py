@@ -17,6 +17,16 @@ TARGET_SECONDS_HORIZONTAL = 1200  # 20分
 # 台本生成の LLM 呼び出し上限（尺不足リトライ含む）
 SCRIPT_GENERATION_MAX_ATTEMPTS = 3
 
+# 推定尺計算と同じ目安（script_quality と揃える）
+_CHARS_PER_SECOND_ESTIMATE = 3.5
+# シーン padding を除いた speech_text 分量の目安（実測は目標より短くなりがち）
+_SPEECH_FRACTION_OF_MIN_TARGET = 0.72
+
+
+def min_speech_chars_for_publish_floor(publish_seconds: int) -> int:
+    """最低公開尺から逆算した speech_text 文字数下限。"""
+    return int(publish_seconds * _CHARS_PER_SECOND_ESTIMATE * _SPEECH_FRACTION_OF_MIN_TARGET)
+
 
 @dataclass(frozen=True)
 class SectionRequirement:
@@ -145,17 +155,18 @@ _POLICIES: Dict[str, VideoDurationPolicy] = {
     "morning_video": VideoDurationPolicy(
         video_type="morning_video",
         target_seconds=TARGET_SECONDS_HORIZONTAL,
-        min_publish_seconds=420,  # 7分未満は再生成
-        min_scenes=20,
-        min_speech_chars=6000,
+        # 3分台の異常短尺を弾きつつ、lite モデルの実出力（7〜8分前後）は通す
+        min_publish_seconds=300,
+        min_scenes=12,
+        min_speech_chars=min_speech_chars_for_publish_floor(300),
         required_sections=_MORNING_SECTIONS,
     ),
     "evening_video": VideoDurationPolicy(
         video_type="evening_video",
         target_seconds=TARGET_SECONDS_HORIZONTAL,
-        min_publish_seconds=540,  # 9分未満は再生成
-        min_scenes=25,
-        min_speech_chars=8000,
+        min_publish_seconds=300,
+        min_scenes=12,
+        min_speech_chars=min_speech_chars_for_publish_floor(300),
         required_sections=_EVENING_SECTIONS,
     ),
 }

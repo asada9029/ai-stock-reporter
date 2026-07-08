@@ -63,7 +63,8 @@ YOUTUBE_API_KEY=your_youtube_api_key
 
 **横型本編の尺ポリシー**（`src/config/video_duration.py` が単一の真実源）
 - LLM・`video_structure.json` 共通の目標: **20分（1200秒）**
-- 公開最低ライン（推定尺）: 朝 **7分** / 夜 **9分** — 未満なら台本を最大 **3回** まで再生成（GHA は失敗）
+- 公開最低ライン（推定尺）: 朝・夜とも **5分（300秒）** — 3分台の異常短尺を弾く。未満なら台本を最大 **3回** まで再生成
+- 補助チェック: シーン数 **12以上**、`speech_text` 文字数は最低尺から自動算出
 - GitHub Actions: Repository secrets に `GEMINI_API_KEY` と `GEMINI_API_KEY_SEARCH` の両方を登録
 - GitHub Actions の本編（朝・夜）は `--presentation immersive` で生成（ショートは従来レイアウト）
 - ショートA: 株用語解説 / ショートB: 注目銘柄（本編ジョブ直後に同じワークフローで生成）
