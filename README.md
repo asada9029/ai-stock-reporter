@@ -57,9 +57,12 @@ YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
 **Gemini モデル・APIキー方針**
-- 全タスク共通: **`gemini-3.1-flash-lite`（GA・安定版）のみ**（preview / 3.5-flash は使わない）
-- ニュース検索（Google Search）: 上記 + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
-- それ以外（台本・サムネ・JSON 等）: 上記 + **`GEMINI_API_KEY`（無料枠）**
+- 検索・サムネ・JSON整形など（Search 以外の通常タスク）: **`gemini-3.1-flash-lite`**
+- **台本生成のみ**: **`gemini-3.5-flash`** → 503 時 **`gemini-3-flash-preview`** にフォールバック
+  - 単一指定: `GEMINI_MODEL_SCRIPT=gemini-3-flash-preview`（または `gemini-3.5-flash`）
+  - preview を先に試す: `GEMINI_SCRIPT_PREVIEW_FIRST=true`
+- ニュース検索（Google Search）: 上記 lite + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
+- それ以外: **`GEMINI_API_KEY`（無料枠）**
 
 **横型本編の尺ポリシー**（`src/config/video_duration.py` が単一の真実源）
 - LLM・`video_structure.json` 共通の目標: **20分（1200秒）**

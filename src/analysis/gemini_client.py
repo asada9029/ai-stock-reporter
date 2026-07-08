@@ -11,17 +11,20 @@ from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
-ModelRole = Literal["heavy", "lite", "search"]
+ModelRole = Literal["heavy", "lite", "search", "script"]
 
 
 class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
-    # モデル定数（GA の 3.1 Flash-Lite のみ。preview / 3.5-flash は使わない）
+    # 通常タスク: GA の 3.1 Flash-Lite
     MODEL_FLASH = "gemini-3.1-flash-lite"
     MODEL_HEAVY = "gemini-3.1-flash-lite"
     MODEL_SEARCH = "gemini-3.1-flash-lite"  # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
     MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 後方互換エイリアス
+    # 台本生成のみ（503 時は script_models() の順でフォールバック）
+    MODEL_SCRIPT_35 = "gemini-3.5-flash"
+    MODEL_SCRIPT_PREVIEW = "gemini-3-flash-preview"
     MODEL_PRO = "gemini-3-pro-preview"
     MODEL_TEST = "gemini-2.5-flash"
 
@@ -92,9 +95,26 @@ class GeminiClient:
             "json_retry_search": 0,
         }
 
+    @classmethod
+    def script_models(cls) -> tuple[str, ...]:
+        """台本生成用モデルチェーン（GEMINI_MODEL_SCRIPT で単一指定も可）。"""
+        override = os.getenv("GEMINI_MODEL_SCRIPT", "").strip()
+        if override:
+            return (override,)
+        preview_first = os.getenv("GEMINI_SCRIPT_PREVIEW_FIRST", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if preview_first:
+            return (cls.MODEL_SCRIPT_PREVIEW, cls.MODEL_SCRIPT_35)
+        return (cls.MODEL_SCRIPT_35, cls.MODEL_SCRIPT_PREVIEW)
+
     @staticmethod
     def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
-        """使用するモデル（GA の 3.1 Flash-Lite。失敗時は同一モデルでサイクルリトライ）。"""
+        """役割ごとのモデル。script は 3.5/preview、それ以外は 3.1 Flash-Lite。"""
+        if model_role == "script":
+            return GeminiClient.script_models()
         return (GeminiClient.MODEL_FLASH,)
 
     @staticmethod
