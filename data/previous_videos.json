@@ -1,17 +1,41 @@
 {
     "latest": {
-        "video_id": "auto_2026-07-06T20:28:43.331924",
-        "published_at": "2026-07-06T20:28:43.331924",
+        "video_id": "auto_2026-07-09T19:31:42.077830",
+        "published_at": "2026-07-09T19:31:42.077830",
         "ir_stocks": [
             {
-                "name": "日本郵船",
-                "ticker": "9101.T",
+                "name": "ソニーグループ",
+                "ticker": "6758.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "商船三井",
-                "ticker": "9104.T",
+                "name": "日立製作所",
+                "ticker": "6501.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "三菱マテリアル",
+                "ticker": "5711.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "日本航空",
+                "ticker": "9201.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ANAホールディングス",
+                "ticker": "9202.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -26,34 +50,64 @@
                 "ticker": "7267.T",
                 "noted_ir": null,
                 "ir_date": null
-            },
-            {
-                "name": "AGC",
-                "ticker": "5201.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "日本板硝子",
-                "ticker": "5202.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "住友電気工業",
-                "ticker": "5802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
-                "noted_ir": null,
-                "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-07-06T20:28:43.331924",
+            "published_at": "2026-07-06T20:28:43.331924",
+            "ir_stocks": [
+                {
+                    "name": "日本郵船",
+                    "ticker": "9101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "商船三井",
+                    "ticker": "9104.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "本田技研工業",
+                    "ticker": "7267.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本板硝子",
+                    "ticker": "5202.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-07-03T18:56:04.959175",
             "published_at": "2026-07-03T18:56:04.959175",
@@ -751,60 +805,6 @@
                 {
                     "name": "鹿島建設",
                     "ticker": "1812.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-06-15T22:01:18.064410",
-            "published_at": "2026-06-15T22:01:18.064410",
-            "ir_stocks": [
-                {
-                    "name": "日本航空",
-                    "ticker": "9201.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ANAホールディングス",
-                    "ticker": "9202.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "LIXIL",
-                    "ticker": "5938.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "東洋製罐グループホールディングス",
-                    "ticker": "5901.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "味の素",
-                    "ticker": "2802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "キリンホールディングス",
-                    "ticker": "2503.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
