@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-21T05:51:25.850410",
-    "video_type": "morning_video",
-    "title": "【スペースX上場】遂に解禁。全人類の富を掴み取れ"
-  },
-  {
     "date": "2026-04-21T17:39:33.957015",
     "video_type": "evening_video",
     "title": "【キオクシア：16倍】伝説的暴騰。半導体の主役交代"
@@ -498,5 +493,10 @@
     "date": "2026-07-15T05:52:07.437469",
     "video_type": "morning_video",
     "title": "【AMD急騰】AI半導体で相場が激変"
+  },
+  {
+    "date": "2026-07-15T18:10:07.526083",
+    "video_type": "evening_video",
+    "title": "【TSMC次世代工場】前倒しで半導体勢力図が激変"
   }
 ]
