@@ -1,8 +1,32 @@
 {
     "latest": {
-        "video_id": "auto_2026-07-15T18:10:06.458617",
-        "published_at": "2026-07-15T18:10:06.458617",
+        "video_id": "auto_2026-07-16T18:11:05.205407",
+        "published_at": "2026-07-16T18:11:05.205407",
         "ir_stocks": [
+            {
+                "name": "トヨタ自動車",
+                "ticker": "7203.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "本田技研工業",
+                "ticker": "7267.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "王子ホールディングス",
+                "ticker": "3861.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "日本製紙",
+                "ticker": "3863.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "住友電気工業",
                 "ticker": "5802.T",
@@ -16,44 +40,74 @@
                 "ir_date": null
             },
             {
-                "name": "野村ホールディングス",
-                "ticker": "8604.T",
+                "name": "LIXIL",
+                "ticker": "5938.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "大和証券グループ本社",
-                "ticker": "8601.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "INPEX",
-                "ticker": "1605.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "石油資源開発",
-                "ticker": "1662.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "NTT",
-                "ticker": "9432.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ソフトバンクグループ",
-                "ticker": "9984.T",
+                "name": "東洋製罐グループホールディングス",
+                "ticker": "5901.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-07-15T18:10:06.458617",
+            "published_at": "2026-07-15T18:10:06.458617",
+            "ir_stocks": [
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "野村ホールディングス",
+                    "ticker": "8604.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "大和証券グループ本社",
+                    "ticker": "8601.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "NTT",
+                    "ticker": "9432.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-07-14T18:02:23.186294",
             "published_at": "2026-07-14T18:02:23.186294",
@@ -751,60 +805,6 @@
                 {
                     "name": "日立製作所",
                     "ticker": "6501.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-06-22T21:47:10.956549",
-            "published_at": "2026-06-22T21:47:10.956549",
-            "ir_stocks": [
-                {
-                    "name": "住友電気工業",
-                    "ticker": "5802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "AGC",
-                    "ticker": "5201.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本ガイシ",
-                    "ticker": "5333.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三井不動産",
-                    "ticker": "8801.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱地所",
-                    "ticker": "8802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
