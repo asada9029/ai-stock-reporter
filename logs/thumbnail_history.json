@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-23T05:54:58.832521",
-    "video_type": "morning_video",
-    "title": "【S&P500：7137】和平合意で爆騰！歴史的転換点を見逃すな"
-  },
-  {
     "date": "2026-04-23T17:38:30.673561",
     "video_type": "evening_video",
     "title": "【SBG：AI反撃】半導体で爆騰。孫氏の策"
@@ -498,5 +493,10 @@
     "date": "2026-07-17T05:48:52.306543",
     "video_type": "morning_video",
     "title": "【NVIDIA供給増】AI相場が再燃"
+  },
+  {
+    "date": "2026-07-20T05:40:55.177859",
+    "video_type": "morning_video",
+    "title": "【S&P500急落】AI巨頭が変える投資の鉄則"
   }
 ]
