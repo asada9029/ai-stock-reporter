@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-23T17:38:30.673561",
-    "video_type": "evening_video",
-    "title": "【SBG：AI反撃】半導体で爆騰。孫氏の策"
-  },
-  {
     "date": "2026-04-24T05:51:03.460858",
     "video_type": "morning_video",
     "title": "【サービスナウ18%暴落】AI銘柄に衝撃。ソフト株の危機"
@@ -498,5 +493,10 @@
     "date": "2026-07-20T05:40:55.177859",
     "video_type": "morning_video",
     "title": "【S&P500急落】AI巨頭が変える投資の鉄則"
+  },
+  {
+    "date": "2026-07-21T06:02:48.148278",
+    "video_type": "morning_video",
+    "title": "【トランプ新命令】米製造業への回帰が導く株の地殻変動"
   }
 ]
