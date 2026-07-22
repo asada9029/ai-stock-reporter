@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-27T18:30:05.935869",
-    "video_type": "evening_video",
-    "title": "【AI株：一極集中の罠】信用残が警告。暴落への警戒"
-  },
-  {
     "date": "2026-04-28T05:57:37.335233",
     "video_type": "morning_video",
     "title": "【S&P500：7173】半導体18連騰。バブルか好機か"
@@ -498,5 +493,10 @@
     "date": "2026-07-22T18:26:44.278207",
     "video_type": "evening_video",
     "title": "【ドル円163円】歴史的円安の衝撃"
+  },
+  {
+    "date": "2026-07-23T05:57:08.886312",
+    "video_type": "morning_video",
+    "title": "【NVIDIA前倒し供給】AI相場が新たな転換点へ"
   }
 ]
