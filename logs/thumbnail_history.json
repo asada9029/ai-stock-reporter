@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-04-29T06:02:17.694020",
-    "video_type": "morning_video",
-    "title": "【SBG：9.8%暴落】AI株に異変。OpenAI成長懸念の衝撃"
-  },
-  {
     "date": "2026-04-30T05:54:41.131264",
     "video_type": "morning_video",
     "title": "【ビザ：8.8%急伸】消費の王者が圧勝。弱気派を粉砕"
@@ -498,5 +493,10 @@
     "date": "2026-07-27T05:48:17.883573",
     "video_type": "morning_video",
     "title": "【電力危機】テック巨人が直面する深刻な壁"
+  },
+  {
+    "date": "2026-07-27T19:40:13.043965",
+    "video_type": "evening_video",
+    "title": "【円急騰140円】輸出企業が悲鳴"
   }
 ]
