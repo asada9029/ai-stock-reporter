@@ -1,59 +1,113 @@
 {
     "latest": {
-        "video_id": "auto_2026-07-29T18:37:54.205183",
-        "published_at": "2026-07-29T18:37:54.205183",
+        "video_id": "auto_2026-07-30T18:30:17.627877",
+        "published_at": "2026-07-30T18:30:17.627877",
         "ir_stocks": [
             {
-                "name": "トヨタ自動車",
-                "ticker": "7203.T",
+                "name": "ソニーグループ",
+                "ticker": "6758.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ホンダ",
-                "ticker": "7267.T",
+                "name": "日立製作所",
+                "ticker": "6501.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ブリヂストン",
-                "ticker": "5108.T",
+                "name": "任天堂",
+                "ticker": "7974.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "横浜ゴム",
-                "ticker": "5101.T",
+                "name": "凸版印刷",
+                "ticker": "7911.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "住友電気工業",
-                "ticker": "5802.T",
+                "name": "野村ホールディングス",
+                "ticker": "8604.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
+                "name": "大和証券グループ本社",
+                "ticker": "8601.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "AGC",
-                "ticker": "5201.T",
+                "name": "三菱UFJフィナンシャル・グループ",
+                "ticker": "8306.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本特殊陶業",
-                "ticker": "5334.T",
+                "name": "三井住友フィナンシャルグループ",
+                "ticker": "8316.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-07-29T18:37:54.205183",
+            "published_at": "2026-07-29T18:37:54.205183",
+            "ir_stocks": [
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ホンダ",
+                    "ticker": "7267.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ブリヂストン",
+                    "ticker": "5108.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "横浜ゴム",
+                    "ticker": "5101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本特殊陶業",
+                    "ticker": "5334.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-07-28T18:37:00.173942",
             "published_at": "2026-07-28T18:37:00.173942",
@@ -751,60 +805,6 @@
                 {
                     "name": "日立製作所",
                     "ticker": "6501.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-07-01T19:42:49.785863",
-            "published_at": "2026-07-01T19:42:49.785863",
-            "ir_stocks": [
-                {
-                    "name": "LIXIL",
-                    "ticker": "5938.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "リンナイ",
-                    "ticker": "5947.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ソニーグループ",
-                    "ticker": "6758.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日立製作所",
-                    "ticker": "6501.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友電気工業",
-                    "ticker": "5802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "商船三井",
-                    "ticker": "9104.T",
                     "noted_ir": null,
                     "ir_date": null
                 }

@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-05T06:28:29.042154",
-    "video_type": "morning_video",
-    "title": "【Apple：17兆円】史上最大。相場の救世主か"
-  },
-  {
     "date": "2026-05-06T05:58:33.858611",
     "video_type": "morning_video",
     "title": "【S&P:7259】史上最高値。原油安で強気転換"
@@ -498,5 +493,10 @@
     "date": "2026-07-30T05:47:08.246120",
     "video_type": "morning_video",
     "title": "【S&P500急落】消費の潮目が変わる前兆"
+  },
+  {
+    "date": "2026-07-30T18:30:18.702059",
+    "video_type": "evening_video",
+    "title": "【中東情勢】米軍の空爆で市場の警戒水位が急上昇"
   }
 ]
