@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-15T07:12:06.090218",
-    "video_type": "morning_video",
-    "title": "【市場の異常】金利急騰で投資家が狼狽"
-  },
-  {
     "date": "2026-05-15T19:46:09.594118",
     "video_type": "evening_video",
     "title": "【半導体・急落】逃げ遅れは命取り"
@@ -498,5 +493,10 @@
     "date": "2026-08-10T17:24:04.329726",
     "video_type": "evening_video",
     "title": "【半導体AI変調】生成AI需要の減速で株価激変"
+  },
+  {
+    "date": "2026-08-11T05:33:28.026137",
+    "video_type": "morning_video",
+    "title": "【金利急騰の罠】テック株が迎える試練"
   }
 ]
