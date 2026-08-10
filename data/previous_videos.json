@@ -1,8 +1,32 @@
 {
     "latest": {
-        "video_id": "auto_2026-08-07T17:12:10.184511",
-        "published_at": "2026-08-07T17:12:10.184511",
+        "video_id": "auto_2026-08-10T17:24:03.296045",
+        "published_at": "2026-08-10T17:24:03.296045",
         "ir_stocks": [
+            {
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "オリエンタルランド",
+                "ticker": "4661.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "オリンパス",
+                "ticker": "7733.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "テルモ",
+                "ticker": "4543.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "ENEOSホールディングス",
                 "ticker": "5020.T",
@@ -16,44 +40,74 @@
                 "ir_date": null
             },
             {
-                "name": "任天堂",
-                "ticker": "7974.T",
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "凸版印刷",
-                "ticker": "7911.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "大林組",
-                "ticker": "1802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "鹿島建設",
-                "ticker": "1812.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "オリックス",
-                "ticker": "8591.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "日本取引所グループ",
-                "ticker": "8697.T",
+                "name": "MS&ADインシュアランスグループホールディングス",
+                "ticker": "8725.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-08-07T17:12:10.184511",
+            "published_at": "2026-08-07T17:12:10.184511",
+            "ir_stocks": [
+                {
+                    "name": "ENEOSホールディングス",
+                    "ticker": "5020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "出光興産",
+                    "ticker": "5019.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "任天堂",
+                    "ticker": "7974.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "凸版印刷",
+                    "ticker": "7911.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "大林組",
+                    "ticker": "1802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "鹿島建設",
+                    "ticker": "1812.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "オリックス",
+                    "ticker": "8591.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本取引所グループ",
+                    "ticker": "8697.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-08-06T18:39:31.021681",
             "published_at": "2026-08-06T18:39:31.021681",
@@ -751,60 +805,6 @@
                 {
                     "name": "ソフトバンクグループ",
                     "ticker": "9984.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-07-14T18:02:23.186294",
-            "published_at": "2026-07-14T18:02:23.186294",
-            "ir_stocks": [
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "商船三井",
-                    "ticker": "9104.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱マテリアル",
-                    "ticker": "5711.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "コマツ",
-                    "ticker": "6301.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ダイキン工業",
-                    "ticker": "6367.T",
                     "noted_ir": null,
                     "ir_date": null
                 }

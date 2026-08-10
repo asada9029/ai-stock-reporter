@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-14T19:31:48.006393",
-    "video_type": "evening_video",
-    "title": "【テスラ急騰】市場の空売り網が崩壊"
-  },
-  {
     "date": "2026-05-15T07:12:06.090218",
     "video_type": "morning_video",
     "title": "【市場の異常】金利急騰で投資家が狼狽"
@@ -498,5 +493,10 @@
     "date": "2026-08-10T05:21:45.801955",
     "video_type": "morning_video",
     "title": "【S&P500高値更新】巨大テック決算の裏側"
+  },
+  {
+    "date": "2026-08-10T17:24:04.329726",
+    "video_type": "evening_video",
+    "title": "【半導体AI変調】生成AI需要の減速で株価激変"
   }
 ]
