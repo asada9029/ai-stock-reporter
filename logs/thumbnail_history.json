@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-18T21:00:23.566539",
-    "video_type": "evening_video",
-    "title": "【金利急上昇】市場が震えた日"
-  },
-  {
     "date": "2026-05-20T07:20:55.052928",
     "video_type": "morning_video",
     "title": "【市場の臨界点】S&P500が突きつける拒絶反応"
@@ -498,5 +493,10 @@
     "date": "2026-08-12T17:16:52.833916",
     "video_type": "evening_video",
     "title": "【トヨタ全固体電池】EV覇権へ量産前倒しの衝撃"
+  },
+  {
+    "date": "2026-08-13T05:37:25.859993",
+    "video_type": "morning_video",
+    "title": "【NVIDIA出荷前倒し】AI相場の火種が再燃"
   }
 ]
