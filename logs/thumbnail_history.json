@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-20T07:20:55.052928",
-    "video_type": "morning_video",
-    "title": "【市場の臨界点】S&P500が突きつける拒絶反応"
-  },
-  {
     "date": "2026-05-21T07:39:20.512856",
     "video_type": "morning_video",
     "title": "【半導体巨人が暴落】投資家が直視すべき現実"
@@ -498,5 +493,10 @@
     "date": "2026-08-13T05:37:25.859993",
     "video_type": "morning_video",
     "title": "【NVIDIA出荷前倒し】AI相場の火種が再燃"
+  },
+  {
+    "date": "2026-08-13T17:13:26.859942",
+    "video_type": "evening_video",
+    "title": "【TSMC増産決定】半導体供給網が激変"
   }
 ]
