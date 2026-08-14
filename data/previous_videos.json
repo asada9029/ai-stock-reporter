@@ -1,59 +1,113 @@
 {
     "latest": {
-        "video_id": "auto_2026-08-13T17:13:25.732952",
-        "published_at": "2026-08-13T17:13:25.732952",
+        "video_id": "auto_2026-08-14T17:09:48.822199",
+        "published_at": "2026-08-14T17:09:48.822199",
         "ir_stocks": [
             {
-                "name": "三菱UFJフィナンシャル・グループ",
-                "ticker": "8306.T",
+                "name": "任天堂",
+                "ticker": "7974.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "三井住友フィナンシャルグループ",
-                "ticker": "8316.T",
+                "name": "バンダイナムコホールディングス",
+                "ticker": "7832.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "AGC",
-                "ticker": "5201.T",
+                "name": "日本郵船",
+                "ticker": "9101.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本特殊陶業",
-                "ticker": "5334.T",
+                "name": "商船三井",
+                "ticker": "9104.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ブリヂストン",
-                "ticker": "5108.T",
+                "name": "武田薬品工業",
+                "ticker": "4502.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "横浜ゴム",
-                "ticker": "5101.T",
+                "name": "中外製薬",
+                "ticker": "4519.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "日本製鉄",
-                "ticker": "5401.T",
+                "name": "野村ホールディングス",
+                "ticker": "8604.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "JFEホールディングス",
-                "ticker": "5411.T",
+                "name": "大和証券グループ本社",
+                "ticker": "8601.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-08-13T17:13:25.732952",
+            "published_at": "2026-08-13T17:13:25.732952",
+            "ir_stocks": [
+                {
+                    "name": "三菱UFJフィナンシャル・グループ",
+                    "ticker": "8306.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三井住友フィナンシャルグループ",
+                    "ticker": "8316.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本特殊陶業",
+                    "ticker": "5334.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ブリヂストン",
+                    "ticker": "5108.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "横浜ゴム",
+                    "ticker": "5101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本製鉄",
+                    "ticker": "5401.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "JFEホールディングス",
+                    "ticker": "5411.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-08-12T17:16:51.837965",
             "published_at": "2026-08-12T17:16:51.837965",
@@ -751,60 +805,6 @@
                 {
                     "name": "ANAホールディングス",
                     "ticker": "9202.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-07-21T18:26:21.117859",
-            "published_at": "2026-07-21T18:26:21.117859",
-            "ir_stocks": [
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "東京海上ホールディングス",
-                    "ticker": "8766.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "MS&ADインシュアランスグループホールディングス",
-                    "ticker": "8725.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "任天堂",
-                    "ticker": "7974.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "凸版ホールディングス",
-                    "ticker": "7911.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "マルハニチロ",
-                    "ticker": "1333.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ニッスイ",
-                    "ticker": "1332.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
