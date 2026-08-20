@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-28T17:02:22.823764",
-    "video_type": "evening_video",
-    "title": "【富士通】10年で3兆円！AI投資の衝撃"
-  },
-  {
     "date": "2026-05-29T19:48:43.461684",
     "video_type": "evening_video",
     "title": "【全固体電池】トヨタが遂に覇権奪取へ"
@@ -498,5 +493,10 @@
     "date": "2026-08-20T16:42:26.205456",
     "video_type": "evening_video",
     "title": "【Google巨額出資】AI覇権の裏側"
+  },
+  {
+    "date": "2026-08-21T05:20:18.294215",
+    "video_type": "morning_video",
+    "title": "【S&P500下落】米経済の潮目が変わる音"
   }
 ]
