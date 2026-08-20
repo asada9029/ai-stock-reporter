@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-05-27T06:31:21.683315",
-    "video_type": "morning_video",
-    "title": "【確認】ニュースリストが空です"
-  },
-  {
     "date": "2026-05-28T17:02:22.823764",
     "video_type": "evening_video",
     "title": "【富士通】10年で3兆円！AI投資の衝撃"
@@ -498,5 +493,10 @@
     "date": "2026-08-19T05:14:02.152208",
     "video_type": "morning_video",
     "title": "【S&P500下落】利上げ圧力で資産が溶ける警告"
+  },
+  {
+    "date": "2026-08-20T16:42:26.205456",
+    "video_type": "evening_video",
+    "title": "【Google巨額出資】AI覇権の裏側"
   }
 ]
