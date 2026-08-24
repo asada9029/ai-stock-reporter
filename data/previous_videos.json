@@ -1,17 +1,29 @@
 {
     "latest": {
-        "video_id": "auto_2026-08-21T16:36:47.761258",
-        "published_at": "2026-08-21T16:36:47.761258",
+        "video_id": "auto_2026-08-24T16:51:15.588050",
+        "published_at": "2026-08-24T16:51:15.588050",
         "ir_stocks": [
             {
-                "name": "日本郵船",
-                "ticker": "9101.T",
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "商船三井",
-                "ticker": "9104.T",
+                "name": "オリエンタルランド",
+                "ticker": "4661.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "大林組",
+                "ticker": "1802.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "鹿島建設",
+                "ticker": "1812.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -28,32 +40,74 @@
                 "ir_date": null
             },
             {
-                "name": "任天堂",
-                "ticker": "7974.T",
+                "name": "NTT",
+                "ticker": "9432.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "凸版印刷",
-                "ticker": "7911.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "武田薬品工業",
-                "ticker": "4502.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "アステラス製薬",
-                "ticker": "4503.T",
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-08-21T16:36:47.761258",
+            "published_at": "2026-08-21T16:36:47.761258",
+            "ir_stocks": [
+                {
+                    "name": "日本郵船",
+                    "ticker": "9101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "商船三井",
+                    "ticker": "9104.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "任天堂",
+                    "ticker": "7974.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "凸版印刷",
+                    "ticker": "7911.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "武田薬品工業",
+                    "ticker": "4502.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "アステラス製薬",
+                    "ticker": "4503.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-08-20T16:42:22.436829",
             "published_at": "2026-08-20T16:42:22.436829",
@@ -751,60 +805,6 @@
                 {
                     "name": "三菱地所",
                     "ticker": "8802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-07-30T18:30:17.627877",
-            "published_at": "2026-07-30T18:30:17.627877",
-            "ir_stocks": [
-                {
-                    "name": "ソニーグループ",
-                    "ticker": "6758.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日立製作所",
-                    "ticker": "6501.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "任天堂",
-                    "ticker": "7974.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "凸版印刷",
-                    "ticker": "7911.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "野村ホールディングス",
-                    "ticker": "8604.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "大和証券グループ本社",
-                    "ticker": "8601.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱UFJフィナンシャル・グループ",
-                    "ticker": "8306.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三井住友フィナンシャルグループ",
-                    "ticker": "8316.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
