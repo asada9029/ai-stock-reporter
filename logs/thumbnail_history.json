@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-04T19:39:29.800035",
-    "video_type": "evening_video",
-    "title": "【TSMC増強】AI半導体供給網が激変"
-  },
-  {
     "date": "2026-06-05T06:28:27.278909",
     "video_type": "morning_video",
     "title": "【景気後退の消滅】米指標急回復で相場が豹変"
@@ -498,5 +493,10 @@
     "date": "2026-08-25T05:20:33.793839",
     "video_type": "morning_video",
     "title": "【NVIDIA供給網改善】AI相場が再燃する予兆"
+  },
+  {
+    "date": "2026-08-25T16:38:00.528994",
+    "video_type": "evening_video",
+    "title": "【国債買い戻し】米利回りの急落で相場転換へ"
   }
 ]

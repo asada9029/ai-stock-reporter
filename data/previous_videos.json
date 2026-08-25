@@ -1,59 +1,113 @@
 {
     "latest": {
-        "video_id": "auto_2026-08-24T16:51:15.588050",
-        "published_at": "2026-08-24T16:51:15.588050",
+        "video_id": "auto_2026-08-25T16:37:59.505207",
+        "published_at": "2026-08-25T16:37:59.505207",
         "ir_stocks": [
             {
-                "name": "リクルートホールディングス",
-                "ticker": "6098.T",
+                "name": "住友電気工業",
+                "ticker": "5802.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "オリエンタルランド",
-                "ticker": "4661.T",
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "大林組",
-                "ticker": "1802.T",
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "鹿島建設",
-                "ticker": "1812.T",
+                "name": "MS&ADインシュアランスグループホールディングス",
+                "ticker": "8725.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "INPEX",
-                "ticker": "1605.T",
+                "name": "トヨタ自動車",
+                "ticker": "7203.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "石油資源開発",
-                "ticker": "1662.T",
+                "name": "デンソー",
+                "ticker": "6902.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "NTT",
-                "ticker": "9432.T",
+                "name": "日本郵船",
+                "ticker": "9101.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ソフトバンクグループ",
-                "ticker": "9984.T",
+                "name": "商船三井",
+                "ticker": "9104.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-08-24T16:51:15.588050",
+            "published_at": "2026-08-24T16:51:15.588050",
+            "ir_stocks": [
+                {
+                    "name": "リクルートホールディングス",
+                    "ticker": "6098.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "オリエンタルランド",
+                    "ticker": "4661.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "大林組",
+                    "ticker": "1802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "鹿島建設",
+                    "ticker": "1812.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "石油資源開発",
+                    "ticker": "1662.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "NTT",
+                    "ticker": "9432.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-08-21T16:36:47.761258",
             "published_at": "2026-08-21T16:36:47.761258",
@@ -751,60 +805,6 @@
                 {
                     "name": "ホンダ",
                     "ticker": "7267.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-07-31T18:41:24.960979",
-            "published_at": "2026-07-31T18:41:24.960979",
-            "ir_stocks": [
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱マテリアル",
-                    "ticker": "5711.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ソニーグループ",
-                    "ticker": "6758.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日立製作所",
-                    "ticker": "6501.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "武田薬品工業",
-                    "ticker": "4502.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "第一三共",
-                    "ticker": "4568.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三井不動産",
-                    "ticker": "8801.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "三菱地所",
-                    "ticker": "8802.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
