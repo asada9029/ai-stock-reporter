@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-05T19:47:12.288459",
-    "video_type": "evening_video",
-    "title": "【全固体電池】トヨタ量産前倒しで狙う次世代覇権"
-  },
-  {
     "date": "2026-06-08T06:02:50.402178",
     "video_type": "morning_video",
     "title": "【S&P500急落】市場を襲う6月の悪夢"
@@ -498,5 +493,10 @@
     "date": "2026-08-26T05:18:56.971869",
     "video_type": "morning_video",
     "title": "【電力株急浮上】AIデータセンターの盲点"
+  },
+  {
+    "date": "2026-08-26T16:39:19.347448",
+    "video_type": "evening_video",
+    "title": "【TSMC前倒し】AI半導体供給網で何が起きる？"
   }
 ]
