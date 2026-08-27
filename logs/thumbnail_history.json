@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-08T20:38:31.074039",
-    "video_type": "evening_video",
-    "title": "【日経2500円安】暴落の正体と逆襲のシナリオ"
-  },
-  {
     "date": "2026-06-09T06:46:15.627183",
     "video_type": "morning_video",
     "title": "【Micron急反発】AI相場の震源地が動いた"
@@ -498,5 +493,10 @@
     "date": "2026-08-27T07:42:30.795630",
     "video_type": "morning_video",
     "title": "【NVIDIA売上倍増】AI相場の全貌"
+  },
+  {
+    "date": "2026-08-28T03:02:18.149853",
+    "video_type": "evening_video",
+    "title": "【トヨタ全固体電池】次世代EV覇権の奪還へ"
   }
 ]
