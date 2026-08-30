@@ -93,13 +93,36 @@ class NewsVisualEnricher:
                 item["related_ticker"] = self._normalize_ticker(raw_ticker)
             else:
                 # search_news 側で付かなかった場合のフォールバック（軽量なルール推定）
-                inferred = self._infer_related_ticker(item)
+                # 大局ニュースには個別ティッカーを無理に付けない
+                if str(item.get("lane") or item.get("pool") or "").lower() in (
+                    "macro",
+                    "impact",
+                ):
+                    inferred = None
+                else:
+                    inferred = self._infer_related_ticker(item)
                 if inferred:
                     item["related_ticker"] = inferred
 
             # company_name も最低限埋める（表示カード用）
             if not item.get("related_company_name"):
                 item["related_company_name"] = self._infer_related_company_name(item)
+
+            # 選定メタがある場合の軽いガード（issuer 広げない／macro に無理な銘柄を付けない）
+            try:
+                from src.analysis.news_selector import apply_related_ticker_guard, annotate_news_roles
+
+                guarded = apply_related_ticker_guard(annotate_news_roles(item))
+                item["lane"] = guarded.get("lane")
+                item["scope"] = guarded.get("scope")
+                item["polarity"] = guarded.get("polarity")
+                item["related_ticker"] = guarded.get("related_ticker")
+                if guarded.get("related_company_name") is None and guarded.get("_related_cleared"):
+                    item["related_company_name"] = None
+                elif guarded.get("related_company_name") is not None:
+                    item["related_company_name"] = guarded.get("related_company_name")
+            except Exception:
+                pass
 
             if self.fetch_og:
                 url = item.get("url") or ""

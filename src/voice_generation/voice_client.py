@@ -72,7 +72,9 @@ class VOICEVOXClient:
             self.SHIKOKU_METAN_NORMAL: "四国めたん（ノーマル）",
             self.SHIKOKU_METAN_AME: "四国めたん（あまあま）",
             self.SHIKOKU_METAN_TSUN: "四国めたん（ツンツン）",
-            self.SHIKOKU_METAN_SEXY: "四国めたん（セクシー）"
+            self.SHIKOKU_METAN_SEXY: "四国めたん（セクシー）",
+            8: "春日部つむぎ（ノーマル）",
+            3: "ずんだもん（ノーマル）",
         }
         return speaker_names.get(speaker_id, f"スピーカーID: {speaker_id}")
     

@@ -85,29 +85,29 @@
                 "name": "event_calendar",
                 "duration": 89,
                 "content": {
-                    "title": "イベントカレンダー",
-                    "description": "主要企業の決算発表スケジュールや重要な経済指標。注目すべき理由を初心者向けに解説します。"
+                    "title": "注目決算スケジュール",
+                    "description": "注目セクター・話題・成長テーマに連動した決算のみ最大2ページ。株主総会は扱わない。件数ゼロなら無言で次へ。"
                 }
             },
             {
                 "name": "sector_overview",
-                "duration": 200,
+                "duration": 280,
                 "content": {
                     "title": "セクター概要",
-                    "description": "東証33業種の騰落ランキング。上昇・下落が顕著だったセクターを特定し、市場の熱量を分析します。"
+                    "description": "東証33業種の騰落ランキングと資金の行き先。上昇・下落が顕著だったセクターと、なぜ動いたかを厚めに。"
                 }
             },
             {
                 "name": "sector_attention",
-                "duration": 223,
+                "duration": 100,
                 "content": {
                     "title": "注目セクター",
-                    "description": "最も注目すべきセクターの個別銘柄IRやニュース。なぜその銘柄が動いたのか、背景を解説します。"
+                    "description": "任意・薄め。材料で実際に動いた銘柄を最大1〜2本だけ。代表企業の百科事典解説はしない。重複なら省略可。"
                 }
             },
             {
                 "name": "prev_ir_tracking",
-                "duration": 133,
+                "duration": 176,
                 "content": {
                     "title": "前回紹介銘柄の追跡",
                     "description": "前回動画で紹介した銘柄の「その後」を追跡し、継続的な視点を提供します。"

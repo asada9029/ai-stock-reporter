@@ -75,29 +75,15 @@ class MarketDataCollector:
             print("\n📈 業種別ランキング＆スクリーンショット取得中...")
             sector_rankings_data = self.sector_chart_capturer.capture_ranking_with_screenshot(video_type=video_type)
 
-            # 3. 一般ニュースの取得（LLM Web Search）
-            print("\n📰 注目ニュース取得中（LLM Web Search）...")
-            
-            # 月曜日の朝は週末のニュースも含めるように調整
-            # 米国市場のニュースは日本時間の朝には少し古くなっていることが多いため、
-            # 朝動画ではデフォルトで24時間まで段階的に広げて探すようにする
+            # 3. 注目ニュース（Impact枠 + Heat枠の2系統）
+            print("\n📰 注目ニュース取得中（Impact / Heat）...")
             is_monday = datetime.now().weekday() == 0
             time_range_str = "過去72時間" if is_monday else "過去12時間"
             candidate_hours = [72] if is_monday else [12, 24]
-            
-            attention_news_query = f"{time_range_str}で、米国の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する米国の一般ニュースを10個教えてください。"
-            
-            attention_news_query += """
-【選定基準（重要）】
-- 投資家（株・資産形成層）の「財布に直結する」ニュースを最優先してください。
-- 単なる政治ニュースではなく、「どのセクターが儲かるか」「どの銘柄にチャンスがあるか」などの投資の文脈に直結しそうなものを選んでください。
-- 日本の投資家にも馴染みのある大手企業（NVIDIA, Apple, Tesla等）や、分かりやすい景気動向を優先してください。
-- 専門用語（ISM, CPI等）は、検索結果に含まれていても、後の工程で「物価」「景気」など分かりやすい言葉に翻訳できるよう、内容を詳しく把握しておいてください。
-"""
-            attention_news_data = self.llm_news_collector.search_news(
-                query=attention_news_query.strip(), 
-                num_results=10,
-                candidate_hours=candidate_hours
+            attention_news_data = self._collect_attention_news_pools(
+                market="us",
+                time_range_str=time_range_str,
+                candidate_hours=candidate_hours,
             )
 
         else:
@@ -110,18 +96,13 @@ class MarketDataCollector:
             print("\n📈 業種別ランキング＆スクリーンショット取得中...")
             sector_rankings_data = self.sector_chart_capturer.capture_ranking_with_screenshot(video_type=video_type)
 
-            # 3. 一般ニュースの取得（LLM Web Search）
-            print("\n📰 注目ニュース取得中（LLM Web Search）...")
-            attention_news_query = "過去12時間で、日本の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する一般ニュースを10個教えてください。"
-            
-            attention_news_query += """
-【選定基準（重要）】
-- 投資家（株・資産形成層）の「財布に直結する」ニュースを最優先してください。
-- 「どのセクターが儲かるか」「どの銘柄にチャンスがあるか」などの投資の文脈に直結しそうなものを選んでください。
-- 日本の投資家が関心の高い話題（円安・円高の影響、大手企業の決算、政府の経済対策、半導体関連など）を優先してください。
-- 専門用語（日銀短観、GDP等）は、検索結果に含まれていても、後の工程で「景気」「国の成長」など分かりやすい言葉に翻訳できるよう、内容を詳しく把握しておいてください。
-"""
-            attention_news_data = self.llm_news_collector.search_news(query=attention_news_query.strip(), num_results=10)
+            # 3. 注目ニュース（Impact枠 + Heat枠の2系統）
+            print("\n📰 注目ニュース取得中（Impact / Heat）...")
+            attention_news_data = self._collect_attention_news_pools(
+                market="jp",
+                time_range_str="過去12時間",
+                candidate_hours=None,
+            )
             
         # 統合
         all_data = {
@@ -135,12 +116,76 @@ class MarketDataCollector:
         print(f"\n✅ データ収集完了")
         
         return all_data
-    
 
-    
+    def _collect_attention_news_pools(
+        self,
+        *,
+        market: str,
+        time_range_str: str,
+        candidate_hours: Optional[List[int]],
+    ) -> List[Dict]:
+        """
+        Impact（波及）と Heat（旬・急変）の2クエリで候補を集め、後段のスコア選定に渡す。
+        """
+        if market == "us":
+            impact_query = f"""{time_range_str}で、米国の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する米国の一般ニュースを8個教えてください。
+【選定基準（Impact＝大局）】
+- 指数・金利・為替・複数セクター・地政学に波及する本命材料を優先。
+- 個別決算・1社IRだけを本命にしない（それはHeat側）。
+- 日本の投資家にも馴染みのある景気・大手の文脈を優先。
+"""
+            heat_query = f"""{time_range_str}で、いま話題になっている米国株・急騰急落・サプライズ決算・半導体/AI関連の注目ニュースを8個教えてください。
+【選定基準（Heat＝局所／旬）】
+- 鮮度最優先。古い話題より直近で動いているものを。
+- 株価が大きく動いた銘柄、SNSや検索で話題、サプライズ材料を優先。
+- 地合い説明の代替にしない（大局はImpact側）。
+- 時価総額が大きくなくても成長株・テーマ株ならOK。
+"""
+        else:
+            impact_query = f"""{time_range_str}で、日本の株式市場全体に影響を与えそうな重要な経済ニュース、政治ニュース、国際情勢、技術動向に関する一般ニュースを8個教えてください。
+【選定基準（Impact＝大局）】
+- 指数・為替・金利・複数セクターに波及する本命材料を優先。
+- 個別決算・1社材料だけを本命にしない（それはHeat側）。
+- 円安円高、政府の経済対策、半導体などのテーマも候補。
+"""
+            heat_query = f"""{time_range_str}で、いま話題の日本株・急騰急落・ストップ高安・成長株・材料株のニュースを8個教えてください。
+【選定基準（Heat＝局所／旬）】
+- 鮮度最優先。今日〜直近で動いている話題を。
+- 値動きが大きい、出来高急増、テーマ性がある銘柄を優先。
+- 地合い説明の代替にしない（大局はImpact側）。
+- 時価総額がそこまで高くなくても、成長株・注目テーマなら積極的に含める。
+"""
+
+        impact = self.llm_news_collector.search_news(
+            query=impact_query.strip(),
+            num_results=8,
+            candidate_hours=candidate_hours,
+        )
+        for n in impact:
+            n["pool"] = "impact"
+
+        heat = self.llm_news_collector.search_news(
+            query=heat_query.strip(),
+            num_results=8,
+            candidate_hours=candidate_hours,
+        )
+        for n in heat:
+            n["pool"] = "heat"
+
+        merged: List[Dict] = []
+        seen = set()
+        for n in impact + heat:
+            key = (str(n.get("title") or "")[:40], str(n.get("url") or ""))
+            if key in seen or not n.get("title"):
+                continue
+            seen.add(key)
+            merged.append(n)
+
+        print(f"    📰 候補プール: impact={len(impact)} heat={len(heat)} merged={len(merged)}")
+        return merged
+
     def _get_index_display_name(self, index_name: str) -> str:
         """指数名の表示用名称を取得"""
-        
         names = {
             'nikkei': '日経平均',
             'topix': 'TOPIX',
@@ -149,7 +194,6 @@ class MarketDataCollector:
             'sp500': 'S&P 500',
             'usdjpy': 'ドル円'
         }
-        
         return names.get(index_name, index_name)
     
     def format_for_display(self, data: Dict) -> str:

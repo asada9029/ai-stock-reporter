@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from pathlib import Path
 from src.data_collection.market_data_collector import MarketDataCollector
 from src.data_collection.llm_news_collector import LlmNewsCollector
 from src.data_collection.ir_event_collector import IrEventCollector
@@ -12,6 +13,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from src.data_collection.previous_videos import load_latest_metadata, save_video_metadata
 from src.data_collection.ir_movement_analyzer import IRMovementAnalyzer
 from src.data_collection.news_visual_enricher import NewsVisualEnricher
+from src.data_collection.recent_news_topics import load_recent_topics, save_topics_for_video
+from src.analysis.news_selector import select_attention_news
+from src.video_generation.diagram_generator import (
+    generate_capital_flow_diagram,
+    generate_checklist_diagram,
+    generate_impact_flow_diagram,
+    generate_market_board_diagram,
+    generate_news_bundle_diagram,
+    _prefer_ja_text,
+)
 from src.utils.logger import log, log_kv, timed
 
 class DataAggregator:
@@ -52,6 +63,137 @@ class DataAggregator:
             return 0
         log_kv("🖼️ news_visuals:done", {"attached": n})
         return n
+
+    def _enrich_news_display_ja(self, news_list: list) -> int:
+        """図解用の短い日本語見出し（title_ja）を一括付与。失敗時は snippet 先頭を使う。"""
+        if not news_list:
+            return 0
+        client = getattr(self.news_collector, "gemini_client", None)
+
+        def _fallback_ja(n: dict) -> str:
+            company = str(n.get("related_company_name") or "").strip()
+            company_ja = {
+                "NVIDIA Corporation": "エヌビディア",
+                "NVIDIA": "エヌビディア",
+                "Salesforce Inc": "セールスフォース",
+                "CrowdStrike Holdings Inc": "クラウドストライク",
+                "MP Materials Corp": "MPマテリアルズ",
+            }.get(company, "")
+            snip = str(n.get("snippet") or n.get("summary") or "").strip()
+            if snip:
+                for sep in ("。", "！", "？", "\n"):
+                    if sep in snip:
+                        snip = snip.split(sep, 1)[0]
+                        break
+                # 会社名が分かれば「社名＋要点」で短く
+                if company_ja and len(snip) > 24:
+                    tip = snip
+                    for prefix in (company, company_ja, "が発表した", "が発表"):
+                        tip = tip.replace(prefix, "")
+                    tip = tip.strip(" 、。")
+                    return f"{company_ja}：{tip}"[:36]
+                return snip[:36]
+            if company_ja:
+                return f"{company_ja}の材料"
+            return str(n.get("title") or "")[:36]
+
+        # 既に日本語見出しがあるものはスキップ
+        need = [n for n in news_list if not str(n.get("title_ja") or "").strip()]
+        if not need:
+            return 0
+
+        if client is None:
+            for n in need:
+                n["title_ja"] = _fallback_ja(n)
+            return len(need)
+
+        lines = []
+        for i, n in enumerate(need):
+            lines.append(
+                f"{i}. title={n.get('title', '')}\n"
+                f"   snippet={n.get('snippet') or n.get('summary') or ''}\n"
+                f"   company={n.get('related_company_name') or ''}"
+            )
+        prompt = f"""以下の株ニュースを、画面表示用の短い日本語見出しに変換してください。
+ルール:
+- 各見出しは全角28文字以内
+- 会社名はカタカナ／日本語表記（例: エヌビディア、セールスフォース）
+- 数値（%、倍など）があれば残す
+- JSONのみ返す
+
+入力:
+{chr(10).join(lines)}
+
+出力例:
+{{"items":[{{"index":0,"title_ja":"エヌビディア好決算で急騰 +8.7%"}}]}}
+"""
+        try:
+            data = client.generate_json(prompt, model_role="lite")
+            rows = data.get("items") or []
+            by_idx = {int(r["index"]): r for r in rows if "index" in r and r.get("title_ja")}
+            filled = 0
+            for i, n in enumerate(need):
+                row = by_idx.get(i)
+                ja = str((row or {}).get("title_ja") or "").strip()
+                n["title_ja"] = ja[:56] if ja else _fallback_ja(n)
+                filled += 1
+            log_kv("news_display_ja", {"filled": filled})
+            return filled
+        except Exception as e:
+            for n in need:
+                if not str(n.get("title_ja") or "").strip():
+                    n["title_ja"] = _fallback_ja(n)
+            log(f"news_display_ja:fallback err={str(e)[:120]}")
+            return len(need)
+
+    def _attach_checklist_diagram(
+        self,
+        aggregated_data: dict,
+        video_type: str,
+        *,
+        is_morning: bool,
+    ) -> None:
+        """tomorrow / japan_impact 向けチェックリスト図解を diagrams に追加。"""
+        try:
+            diagram_dir = Path(self.output_base_dir) / "diagrams" / video_type
+            diagram_dir.mkdir(parents=True, exist_ok=True)
+            outlook_key = "jp_tomorrow_outlook" if is_morning else "us_tonight_outlook"
+            outlook = aggregated_data.get(outlook_key) or []
+            news = aggregated_data.get("attention_news") or []
+            items: list[str] = []
+            for n in outlook[:4]:
+                t = str((n or {}).get("title") or "").strip()
+                if t:
+                    items.append(t)
+            for n in news[:4]:
+                if len(items) >= 3:
+                    break
+                tip = str((n or {}).get("why_now") or (n or {}).get("title") or "").strip()
+                if tip and tip not in items:
+                    items.append(tip)
+            # 最低3件の定番チェックで埋める
+            defaults = (
+                ["寄り付きの指数反応", "ドル円の方向感", "本命ニュースの個別波及"]
+                if is_morning
+                else ["今夜の米指標・要人発言", "ドル円の急変有無", "明日の日本株オープニング"]
+            )
+            for d in defaults:
+                if len(items) >= 3:
+                    break
+                if d not in items:
+                    items.append(d)
+            title = "今日見るべきチェック" if is_morning else "明日のチェック"
+            path = generate_checklist_diagram(
+                items[:4],
+                output_path=diagram_dir / "checklist.png",
+                title=title,
+            )
+            if path:
+                diagrams = aggregated_data.setdefault("diagrams", {})
+                diagrams["checklist_path"] = path
+                log_kv("🖼️ checklist:done", {"items": len(items[:4])})
+        except Exception as e:
+            log(f"⚠️ checklist:skip err={e}")
 
     def _get_companies_for_sector(self, sector_name: str, num_companies: int = 3) -> list[dict]: # 戻り値の型を修正
         """
@@ -107,8 +249,12 @@ class DataAggregator:
         # イベントのリストをテキスト形式にまとめる
         events_summary = "\n".join([f"- {e['company']} ({e['security_code']}): {e['industry']}" for e in events])
         
-        prompt = f"""以下の日本の株式市場における{event_type}予定リストの中から、投資家にとって特に重要と思われる企業を最大{limit}社厳選し、その「証券コード」のみをカンマ区切りで返してください。
-選定基準：時価総額が大きい、業界大手である、または市場への影響力が強い企業を優先してください。余計な説明は一切不要です。
+        prompt = f"""以下の日本の株式市場における{event_type}予定リストの中から、投資家にとって特に重要・注目と思われる企業を最大{limit}社厳選し、その「証券コード」のみをカンマ区切りで返してください。
+選定基準（優先順）:
+1. いま話題・テーマ性のある銘柄（AI・半導体・防衛・成長株など。時価総額が小さくても可）
+2. 本日の市場ニュースや注目セクターと連動しそうな銘柄
+3. 時価総額が大きい業界大手（補助点。これだけで選ばない）
+余計な説明は一切不要です。
 
 リスト：
 {events_summary}
@@ -160,15 +306,149 @@ class DataAggregator:
             raw_data = self.market_collector.collect_all(video_type=video_type)
             t["attention_news_raw"] = len(raw_data.get("attention_news", []) or [])
         
-        # 注目ニュースをルート直下に移動
-        aggregated_data["attention_news"] = raw_data.get("attention_news", [])
+        # 注目ニュースをルート直下に移動 → スコア選定
+        raw_news = raw_data.get("attention_news", []) or []
+        recent_topics = load_recent_topics(limit=40)
+        with timed("📰 news_selector:rank") as t_sel:
+            ranked_news, select_meta = select_attention_news(
+                raw_news,
+                recent_topics=recent_topics,
+                max_keep=8,
+                heat_slots=2,
+                use_price_heat=True,
+                gemini_client=self.news_collector.gemini_client,
+                enrich_with_llm=True,
+            )
+            t_sel["raw"] = len(raw_news)
+            t_sel["kept"] = len(ranked_news)
+            t_sel["slots"] = select_meta.get("slots")
+
+        aggregated_data["attention_news"] = ranked_news
+        aggregated_data["news_selection_meta"] = select_meta
         
         # ニュース取得失敗チェック（GitHub Actions を失敗させるため、空ならエラーを投げる）
         if not aggregated_data["attention_news"]:
             raise RuntimeError("注目ニュースの取得に失敗しました（0件）。動画生成を中止します。")
 
         self._enrich_news_visuals(aggregated_data["attention_news"], video_type)
+        self._enrich_news_display_ja(aggregated_data["attention_news"])
         log_kv("📰 attention_news", {"count": len(aggregated_data.get("attention_news", []) or [])})
+
+        # 図解アセット（本文UI・文字少なめ）
+        try:
+            diagram_dir = Path(self.output_base_dir) / "diagrams" / video_type
+            diagram_dir.mkdir(parents=True, exist_ok=True)
+            diagrams: dict = {}
+            bundle_path = generate_news_bundle_diagram(
+                ranked_news,
+                output_path=diagram_dir / "news_bundle.png",
+                title="本日の主要ニュース",
+            )
+            if bundle_path:
+                diagrams["news_bundle_path"] = bundle_path
+            honmei = next((n for n in ranked_news if n.get("slot") == "honmei"), ranked_news[0])
+            heat = next((n for n in ranked_news if n.get("slot") == "heat"), None)
+
+            def _ja_label(n: dict, fallback: str, limit: int = 48) -> str:
+                raw = _prefer_ja_text(
+                    str(n.get("title_ja") or ""),
+                    str(n.get("snippet") or ""),
+                    str(n.get("summary") or ""),
+                    str(n.get("related_company_name") or ""),
+                    str(n.get("title") or ""),
+                    min_len=2,
+                )
+                text = (raw or fallback).strip()
+                return text[:limit] if limit else text
+
+            left = _ja_label(honmei, "本命ニュース", 36)
+            mid = "市場・セクター"
+            right = "日本株への影響" if is_morning else "明日の見通し"
+            left_sub = _ja_label(honmei, "", 28)
+            if left_sub == left:
+                left_sub = ""
+            mid_sub = "金利・業績・需給"
+            right_sub = "個別より選別" if is_morning else "寄り付き反応"
+            if heat:
+                mid = _ja_label(heat, mid, 36)
+                mid_sub = str(
+                    heat.get("why_now")
+                    or heat.get("summary")
+                    or heat.get("snippet")
+                    or mid_sub
+                ).strip()[:32]
+            flow_bullets = []
+            for n in ranked_news[:3]:
+                tip = _prefer_ja_text(
+                    str(n.get("snippet") or ""),
+                    str(n.get("title_ja") or ""),
+                    str(n.get("summary") or ""),
+                    str(n.get("title") or ""),
+                    min_len=4,
+                )
+                if tip:
+                    flow_bullets.append(tip[:80])
+            flow_path = generate_impact_flow_diagram(
+                left_label=left,
+                mid_label=mid,
+                right_label=right,
+                output_path=diagram_dir / "impact_flow.png",
+                note="まずは流れを目で追ってから、詳細を聞こう",
+                left_sub=left_sub,
+                mid_sub=mid_sub,
+                right_sub=right_sub,
+                bullets=flow_bullets,
+            )
+            if flow_path:
+                diagrams["impact_flow_path"] = flow_path
+
+            market_indices_raw = raw_data.get("market_indices") or {}
+            board_path = generate_market_board_diagram(
+                market_indices_raw,
+                output_path=diagram_dir / "market_board.png",
+                title="今日の地合いボード",
+            )
+            if board_path:
+                diagrams["market_board_path"] = board_path
+
+            ranking = ((raw_data.get("sector_rankings") or {}).get("ranking") or {})
+            tops = ranking.get("top") or []
+            bottoms = ranking.get("bottom") or []
+
+            def _sector_rows(src: list, limit: int = 4) -> list:
+                rows = [
+                    {"name": s.get("sector") or s.get("name"), "change_percent": s.get("change")}
+                    for s in src[:limit]
+                    if s
+                ]
+                # 最低3件を目指す（元データが足りなければあるだけ）
+                return rows
+
+            inflows = _sector_rows(tops, 4)
+            outflows = _sector_rows(bottoms, 4)
+            capital_path = generate_capital_flow_diagram(
+                inflows,
+                outflows,
+                output_path=diagram_dir / "capital_flow.png",
+                title="資金の行き先（ざっくり）",
+            )
+            if capital_path:
+                diagrams["capital_flow_path"] = capital_path
+
+            aggregated_data["diagrams"] = diagrams
+            log_kv("🖼️ diagrams:done", {k: bool(v) for k, v in diagrams.items()})
+        except Exception as e:
+            log(f"⚠️ diagrams:skip err={e}")
+            aggregated_data["diagrams"] = {}
+
+        # Novelty用に今回のトピックを保存（タイトル先頭）
+        try:
+            save_topics_for_video(
+                [n.get("title", "") for n in ranked_news[:6]],
+                video_type=video_type,
+            )
+        except Exception as e:
+            log(f"⚠️ recent_news_topics:save_skip err={e}")
 
         # 主要指数のみを market_indices として保持 (旧 market_and_sector)
         aggregated_data["market_indices"] = raw_data.get("market_indices", {})
@@ -188,9 +468,9 @@ class DataAggregator:
             ranking_data = sector_rankings_raw.get("ranking", {})
             target_sectors = []
             # 上位・下位からそれぞれ最大2つずつピックアップ
-            for sector_info in ranking_data.get("top", [])[:2]:
+            for sector_info in ranking_data.get("top", [])[:3]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "top", "change": sector_info.get("change")})
-            for sector_info in ranking_data.get("bottom", [])[:2]:
+            for sector_info in ranking_data.get("bottom", [])[:3]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "bottom", "change": sector_info.get("change")})
 
             sector_analysis_list = []
@@ -262,49 +542,60 @@ class DataAggregator:
                 except Exception as e:
                     print(f"日本市場への影響予測データの取得中にエラー: {e}")
                     aggregated_data["jp_tomorrow_outlook"] = []
+                self._attach_checklist_diagram(aggregated_data, video_type, is_morning=True)
 
         else: # --- 以下、夜動画専用処理 ---
             # 3. 決算発表スケジュールの取得と画像生成
             print("決算発表スケジュールを収集し、画像を生成中...")
             kessan_events_raw = self.ir_collector.fetch_ir_events(event_type='kessan', days_ahead=3)
             if kessan_events_raw["status"] == "success" and kessan_events_raw["data"]:
-                # LLMで重要なものに絞り込む
-                kessan_events_filtered = self._filter_important_ir_events(kessan_events_raw["data"], "決算発表")
-                
-                kessan_image_path = self.table_image_generator.generate_table_image(
-                    data=kessan_events_filtered,
-                    title="直近の注目決算発表スケジュール",
-                    filename="kessan_schedule.png"
+                # 注目・成長・テーマ優先で最大16件 → 最大2ページ
+                kessan_events_filtered = self._filter_important_ir_events(
+                    kessan_events_raw["data"], "決算発表", limit=16
                 )
+                page_size = 8
+                pages = [
+                    kessan_events_filtered[i : i + page_size]
+                    for i in range(0, len(kessan_events_filtered), page_size)
+                ][:2]
+                image_paths = []
+                for pi, page_data in enumerate(pages, start=1):
+                    suffix = "" if pi == 1 else f"_p{pi}"
+                    title = (
+                        "直近の注目決算発表スケジュール"
+                        if pi == 1
+                        else f"直近の注目決算発表スケジュール（{pi}ページ目）"
+                    )
+                    path = self.table_image_generator.generate_table_image(
+                        data=page_data,
+                        title=title,
+                        filename=f"kessan_schedule{suffix}.png",
+                    )
+                    if path:
+                        image_paths.append(path)
                 aggregated_data["kessan_schedule"] = {
                     "data": kessan_events_filtered,
-                    "image_path": kessan_image_path
+                    "image_path": image_paths[0] if image_paths else None,
+                    "image_paths": image_paths,
+                    "page_count": len(image_paths),
                 }
             else:
-                aggregated_data["kessan_schedule"] = {"data": [], "image_path": None}
-                print("決算発表のデータまたは画像生成に失敗しました。")
+                aggregated_data["kessan_schedule"] = {
+                    "data": [],
+                    "image_path": None,
+                    "image_paths": [],
+                    "page_count": 0,
+                }
+                print("決算発表のデータなし（セクションは無言スキップ想定）。")
             print("決算発表スケジュールの収集と画像生成完了。")
 
-            # 4. 株主総会スケジュールの取得と画像生成
-            print("株主総会スケジュールを収集し、画像を生成中...")
-            soukai_events_raw = self.ir_collector.fetch_ir_events(event_type='soukai', days_ahead=3)
-            if soukai_events_raw["status"] == "success" and soukai_events_raw["data"]:
-                # LLMで重要なものに絞り込む
-                soukai_events_filtered = self._filter_important_ir_events(soukai_events_raw["data"], "株主総会")
-                
-                soukai_image_path = self.table_image_generator.generate_table_image(
-                    data=soukai_events_filtered,
-                    title="直近の注目株主総会スケジュール",
-                    filename="soukai_schedule.png"
-                )
-                aggregated_data["soukai_schedule"] = {
-                    "data": soukai_events_filtered,
-                    "image_path": soukai_image_path
-                }
-            else:
-                aggregated_data["soukai_schedule"] = {"data": [], "image_path": None}
-                print("株主総会イベントのデータまたは画像生成に失敗しました。")
-            print("株主総会スケジュールの収集と画像生成完了。")
+            # 株主総会は扱わない（保有者以外に価値が薄い）
+            aggregated_data["soukai_schedule"] = {
+                "data": [],
+                "image_path": None,
+                "image_paths": [],
+                "page_count": 0,
+            }
 
             # 5. 注目セクターの主要企業名リストをLLMで生成 (一括リクエスト)
             print("注目セクターの主要企業名と銘柄コードをLLMで一括生成中...")
@@ -312,16 +603,17 @@ class DataAggregator:
             ranking_data = sector_rankings_raw.get("ranking", {})
             target_sectors = []
             # 上位・下位からそれぞれ最大2つずつピックアップ
-            for sector_info in ranking_data.get("top", [])[:2]:
+            for sector_info in ranking_data.get("top", [])[:3]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "top", "change": sector_info.get("change")})
-            for sector_info in ranking_data.get("bottom", [])[:2]:
+            for sector_info in ranking_data.get("bottom", [])[:3]:
                 target_sectors.append({"name": sector_info.get("sector"), "type": "bottom", "change": sector_info.get("change")})
 
             sector_analysis_list = []
             if target_sectors:
                 sector_names_str = ", ".join([s["name"] for s in target_sectors if s["name"]])
-                prompt = f"""日本の株式市場における、以下のセクターの代表的な主要企業をそれぞれ2社、会社名とその銘柄コード（例: トヨタ(7203.T)）の形式でJSON形式で教えてください。
-    出力は、セクター名をキーとし、その値は企業のリスト（各企業は辞書形式で "name" と "ticker" を含む）としてください。
+                prompt = f"""日本の株式市場における、以下のセクターの代表的な主要企業をそれぞれ1社だけ、会社名とその銘柄コード（例: トヨタ(7203.T)）の形式でJSON形式で教えてください。
+    百科事典的な羅列は不要。騰落の主役になりやすい主力1社で十分です。
+    出力は、セクター名をキーとし、その値は企業のリスト（各企業は辞書形式で "name" と "ticker" を含む、要素は1社）としてください。
     余計な説明や```json```などのマークダウンは不要です。
 
     セクターリスト: [{sector_names_str}]
@@ -329,11 +621,9 @@ class DataAggregator:
     出力例:
     {{
         "非鉄金属": [
-            {{"name": "住友電気工業", "ticker": "5802.T"}},
             {{"name": "住友金属鉱山", "ticker": "5713.T"}}
         ],
         "建設業": [
-            {{"name": "大林組", "ticker": "1802.T"}},
             {{"name": "鹿島建設", "ticker": "1812.T"}}
         ]
     }}
@@ -345,8 +635,9 @@ class DataAggregator:
                     all_companies_for_news = []
                     for sector in target_sectors:
                         sector_name = sector["name"]
-                        companies = llm_response.get(sector_name, [])
-                        for c in companies:
+                        companies = llm_response.get(sector_name, []) or []
+                        # 夜の attention は薄め: セクターあたり最大1社
+                        for c in companies[:1]:
                             if c.get("name") and c.get("ticker"):
                                 all_companies_for_news.append(c)
 
@@ -389,7 +680,7 @@ class DataAggregator:
                     # データを構造化して集約
                     for sector in target_sectors:
                         sector_name = sector["name"]
-                        companies_in_sector = llm_response.get(sector_name, [])
+                        companies_in_sector = (llm_response.get(sector_name, []) or [])[:1]
                         
                         structured_companies = []
                         for c in companies_in_sector:
@@ -474,6 +765,7 @@ class DataAggregator:
             except Exception as e:
                 print(f"今夜の米国市場見通しの取得中にエラー: {e}")
                 aggregated_data["us_tonight_outlook"] = []
+            self._attach_checklist_diagram(aggregated_data, video_type, is_morning=False)
 
             # 9. 今回の注目IR銘柄メタを保存（動画生成時に使用するための永続化）
             try:

@@ -439,8 +439,8 @@ class MarketIndexCapturer:
                     all_market_data[key] = data
         else:
             all_market_data = {}
-            # 夜動画用は NIKKEI, SP500 の順で取得
-            for key in ["NIKKEI", "SP500"]:
+            # 夜動画用は NIKKEI, SP500, USDJPY（地合いボードを最低3枚に）
+            for key in ["NIKKEI", "SP500", "USDJPY"]:
                 data = self.capture_chart_and_data(key)
                 if data:
                     all_market_data[key] = data

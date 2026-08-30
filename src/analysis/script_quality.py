@@ -168,9 +168,16 @@ def optional_section_keys_to_skip(analysis_data: dict, video_type: str) -> Set[s
     if "evening" in video_type:
         # prev_ir はデータがあっても LLM が省略しがちなため常に任意扱い
         skip.add("prev_ir_tracking")
+        # sector_attention は薄め任意（overview / news と重複しやすい）
+        skip.add("sector_attention")
         prev = analysis_data.get("prev_ir_analysis") or []
         if not prev:
             pass  # 上記で既にスキップ
+        kessan = analysis_data.get("kessan_schedule") or {}
+        kessan_data = kessan.get("data") or []
+        kessan_images = kessan.get("image_paths") or ([kessan["image_path"]] if kessan.get("image_path") else [])
+        if not kessan_data or not kessan_images:
+            skip.add("event_calendar")
     return skip
 
 

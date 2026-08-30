@@ -17,16 +17,16 @@ ModelRole = Literal["heavy", "lite", "search", "script"]
 class GeminiClient:
     """Gemini API クライアント（Web Search対応）"""
     
-    # 通常タスク: GA の 3.1 Flash-Lite
-    MODEL_FLASH = "gemini-3.1-flash-lite"
-    MODEL_HEAVY = "gemini-3.1-flash-lite"
-    MODEL_SEARCH = "gemini-3.1-flash-lite"  # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
-    MODEL_FLASH_LITE = "gemini-3.1-flash-lite"  # 後方互換エイリアス
-    # 台本生成のみ（503 時は script_models() の順でフォールバック）
+    # 通常タスク: GA の 3.5 Flash-Lite
+    MODEL_FLASH = "gemini-3.5-flash-lite"
+    MODEL_HEAVY = "gemini-3.5-flash-lite"
+    MODEL_SEARCH = "gemini-3.5-flash-lite"  # Web Search（GEMINI_API_KEY_SEARCH / 有料枠）
+    MODEL_FLASH_LITE = "gemini-3.5-flash-lite"  # 後方互換エイリアス
+    # 台本生成用モデル（フォールバック順）
+    MODEL_SCRIPT_37 = "gemini-3.7-flash"
+    MODEL_SCRIPT_36 = "gemini-3.6-flash"
     MODEL_SCRIPT_35 = "gemini-3.5-flash"
-    MODEL_SCRIPT_PREVIEW = "gemini-3-flash-preview"
-    MODEL_PRO = "gemini-3-pro-preview"
-    MODEL_TEST = "gemini-2.5-flash"
+    # MODEL_FLASH (gemini-3.5-flash-lite) もフォールバックに使用
 
     # テキスト用 / Search用で API キーを分離可能（Search のみ有料キーを使う場合）
     _shared_text_client = None
@@ -101,14 +101,14 @@ class GeminiClient:
         override = os.getenv("GEMINI_MODEL_SCRIPT", "").strip()
         if override:
             return (override,)
-        preview_first = os.getenv("GEMINI_SCRIPT_PREVIEW_FIRST", "").lower() in (
-            "1",
-            "true",
-            "yes",
+        
+        # フォールバックチェーン: 3.7 -> 3.6 -> 3.5 -> 3.5-Lite
+        return (
+            cls.MODEL_SCRIPT_37,
+            cls.MODEL_SCRIPT_36,
+            cls.MODEL_SCRIPT_35,
+            cls.MODEL_FLASH,  # gemini-3.5-flash-lite
         )
-        if preview_first:
-            return (cls.MODEL_SCRIPT_PREVIEW, cls.MODEL_SCRIPT_35)
-        return (cls.MODEL_SCRIPT_35, cls.MODEL_SCRIPT_PREVIEW)
 
     @staticmethod
     def _models_for_role(model_role: ModelRole, *, use_search: bool = False) -> tuple[str, ...]:
@@ -152,7 +152,7 @@ class GeminiClient:
         model_role: ModelRole = "lite",
     ) -> str:
         """
-        コンテンツ生成（サイクル制リトライ: gemini-3.1-flash-lite + 指数バックオフ）
+        コンテンツ生成（サイクル制リトライ: gemini-3.5-flash-lite + 指数バックオフ）
 
         Args:
             prompt: プロンプト

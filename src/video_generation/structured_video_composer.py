@@ -8,12 +8,23 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from src.config.presentation import is_immersive_mode, normalize_presentation_mode
+from src.config.studio_soft import (
+    STUDIO_SOFT,
+    ink_color,
+    speaker_subtitle_color,
+    immersive_content_box,
+    immersive_char_band,
+    immersive_telop_box,
+    immersive_density_score,
+)
 from src.video_generation.character_emotion import (
     assign_segment_emotions,
     apply_emotion_motion,
-    merge_emotion_beats_for_scene,
+    merge_speaker_emotion_beats_for_scene,
     normalize_emotion,
 )
+from src.config.characters import get_character_image_name
+from src.analysis.dialogue_util import primary_speaker_for_scene
 
 from moviepy import (
     ImageClip,
@@ -25,6 +36,125 @@ from moviepy import (
 # v2.0系でのエフェクトクラス
 from moviepy.video.fx import FadeIn, FadeOut, MaskColor
 
+def _resolve_jp_font_path(font_path: Optional[str] = None) -> Optional[str]:
+    if font_path and Path(font_path).exists():
+        return font_path
+    here = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+    for name in (
+        "SourceHanSans-Heavy.otf",
+        "MPLUS1-Bold.ttf",
+        "NotoSansJP-Regular.ttf",
+        "NotoSansJP-Regular.otf",
+    ):
+        p = here / name
+        if p.exists():
+            return str(p)
+    for p in (
+        Path("C:/Windows/Fonts/meiryo.ttc"),
+        Path("C:/Windows/Fonts/YuGothB.ttc"),
+        Path("/System/Library/Fonts/Hiragino Sans GB.ttc"),
+    ):
+        if p.exists():
+            return str(p)
+    return None
+
+
+def _pil_font(font_path: Optional[str], size: int):
+    fp = _resolve_jp_font_path(font_path)
+    if fp:
+        try:
+            return ImageFont.truetype(fp, size)
+        except Exception:
+            pass
+    return ImageFont.load_default()
+
+
+def _rgba_image_clip(
+    img: Image.Image,
+    *,
+    duration: float,
+    start: float = 0.0,
+) -> ImageClip:
+    """RGBA を MoviePy ImageClip(+mask) に変換。"""
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+    arr = np.array(img)
+    rgb = ImageClip(arr[:, :, :3]).with_duration(duration).with_start(start)
+    mask = (
+        ImageClip(arr[:, :, 3].astype("float") / 255.0, is_mask=True)
+        .with_duration(duration)
+        .with_start(start)
+    )
+    return rgb.with_mask(mask)
+
+
+def _draw_cream_rounded_band(
+    size: Tuple[int, int],
+    *,
+    radius: int = 22,
+    cream_alpha: Optional[int] = None,
+    stage: bool = False,
+) -> Image.Image:
+    """影つきクリーム帯の RGBA 画像。stage=True で背景と区別しやすい下地。"""
+    w, h = size
+    cream = STUDIO_SOFT["surface_cream_solid"]
+    blue = STUDIO_SOFT["soft_blue"]
+    outline = STUDIO_SOFT.get("panel_outline", (*blue, 170))
+    if cream_alpha is None:
+        cream_alpha = int(STUDIO_SOFT.get("panel_cream_alpha", 248))
+    shadow_a = int(STUDIO_SOFT.get("panel_shadow_alpha", 56))
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(shadow)
+    sdraw.rounded_rectangle(
+        (5, 8, w - 1, h - 1),
+        radius=radius,
+        fill=(44, 36, 32, shadow_a + (18 if stage else 0)),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=12 if stage else 9))
+    img = Image.alpha_composite(img, shadow)
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle(
+        (0, 0, w - 5, h - 7),
+        radius=radius,
+        fill=(*cream, int(cream_alpha)),
+        outline=(outline if isinstance(outline, tuple) else (*blue, 200)),
+        width=3 if stage else 2,
+    )
+    return img
+
+
+def _make_immersive_scrim_clip(
+    size: Tuple[int, int],
+    *,
+    duration: float,
+    start: float,
+) -> ImageClip:
+    """
+    背景と前面の差をつけるソフト暗幕＋ビネット。
+    背景を白く薄めるのではなく、手前にピントが来るようにする。
+    """
+    w, h = size
+    overall = int(STUDIO_SOFT.get("scrim_overall_alpha", 28))
+    vmax = int(STUDIO_SOFT.get("scrim_vignette_alpha", 58))
+    ys = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]
+    xs = np.linspace(0.0, 1.0, w, dtype=np.float32)[None, :]
+    # 端を少し落とす（中央コンテンツは相対的に浮く）
+    dx = (xs - 0.5) / 0.62
+    dy = (ys - 0.45) / 0.78
+    d = np.sqrt(dx * dx + dy * dy)
+    vignette = np.clip((d - 0.42) / 0.75, 0.0, 1.0) * float(vmax)
+    # メイン帯の背後だけごく薄いインク（クリーム枠の下地）
+    band = np.clip((ys - 0.10) * (0.78 - ys) * 4.2, 0.0, 1.0) * 8.0
+    alpha = np.clip(overall + vignette + band, 0, 70).astype(np.uint8)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    rgba[:, :, 0] = 36
+    rgba[:, :, 1] = 30
+    rgba[:, :, 2] = 28
+    rgba[:, :, 3] = alpha
+    return _rgba_image_clip(Image.fromarray(rgba, "RGBA"), duration=duration, start=start)
+
+
 def _rounded_plate_clip(size: Tuple[int, int], *, radius: int = 26, color=(255, 255, 255), alpha: int = 210) -> ImageClip:
     """半透明の角丸プレート（tickerカード等）"""
     w, h = size
@@ -32,7 +162,15 @@ def _rounded_plate_clip(size: Tuple[int, int], *, radius: int = 26, color=(255, 
     draw = ImageDraw.Draw(img)
     fill = (int(color[0]), int(color[1]), int(color[2]), int(alpha))
     draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=fill, outline=(255, 255, 255, 140), width=2)
-    return ImageClip(np.array(img))
+    return _rgba_image_clip(img, duration=1.0, start=0.0)
+
+
+def _studio_soft_band_clip(size: Tuple[int, int], *, radius: Optional[int] = None) -> ImageClip:
+    """枠レス寄りのクリーム情報帯（Studio Soft）。細い装飾枠は付けない。"""
+    radius = int(radius if radius is not None else STUDIO_SOFT["band_radius"])
+    img = _draw_cream_rounded_band(size, radius=radius)
+    return _rgba_image_clip(img, duration=1.0, start=0.0)
+
 
 def _shadow_clip(size: Tuple[int, int], *, radius: int = 18, blur: int = 14, alpha: int = 80) -> ImageClip:
     """チャート等の背面に置くソフトシャドウ"""
@@ -306,6 +444,206 @@ def _wrap_text_jp(text: str, max_width_per_line: float) -> str:
     return "\n".join(out_lines).strip("\n")
 
 
+def _wrap_text_to_px(
+    text: str,
+    font: ImageFont.ImageFont,
+    max_px: int,
+    *,
+    max_lines: int = 2,
+    ellipsis: bool = True,
+) -> List[str]:
+    """実ピクセル幅で折り返す（全角幅の見積もり誤差で見切れないようにする）。"""
+    pages, _leftover = _paginate_text_px(
+        text, font, max_px, max_lines=max_lines, ellipsis=ellipsis
+    )
+    return pages[0] if pages else [" "]
+
+
+def _paginate_text_px(
+    text: str,
+    font: ImageFont.ImageFont,
+    max_px: int,
+    *,
+    max_lines: int = 2,
+    ellipsis: bool = True,
+) -> Tuple[List[List[str]], str]:
+    """2行ページに分割。ellipsis=False なら余りは次ページへ（省略しない）。"""
+    remaining = str(text or "").strip()
+    if not remaining:
+        return [[" "]], ""
+    tmp = Image.new("RGBA", (8, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+
+    def _w(s: str) -> int:
+        bb = td.textbbox((0, 0), s, font=font)
+        return bb[2] - bb[0]
+
+    def _break_at(src: str) -> int:
+        if _w(src) <= max_px:
+            return len(src)
+        lo, hi, best = 1, len(src), 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if _w(src[:mid]) <= max_px:
+                best = mid
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        # 句読点優先だが、行が短すぎる位置では切らない（「みのりさん、」だけで終わらない）
+        min_keep = max(1, int(best * 0.55))
+        n = best
+        for i in range(best, min_keep, -1):
+            if src[i - 1] in "。、．，,!！?？ ":
+                if _w(src[:i]) <= max_px:
+                    n = i
+                    break
+        # カタカナ語の途中で切らない。次行が「ィ」「ー」で始まらないよう調整。
+        def _is_kata(ch: str) -> bool:
+            o = ord(ch)
+            return ch == "ー" or 0x30A1 <= o <= 0x30FA
+
+        if 0 < n < len(src) and _is_kata(src[n]) and _is_kata(src[n - 1]):
+            s = n
+            while s > 0 and _is_kata(src[s - 1]):
+                s -= 1
+            e = n
+            while e < len(src) and _is_kata(src[e]):
+                e += 1
+            if _w(src[:e]) <= max_px:
+                n = e
+            elif s >= min_keep and _w(src[s:e]) <= max_px:
+                n = s
+        no_start = set("ァィゥェォャュョッぁぃぅぇぉゃゅょっー、。．，,)]）】」』")
+        while n < len(src) and n > 1 and src[n] in no_start:
+            if _w(src[: n + 1]) <= max_px:
+                n += 1
+            else:
+                while n > 1 and n < len(src) and src[n] in no_start:
+                    n -= 1
+                break
+        # 次行が1文字だけにならない（本格加|速 を防ぐ）
+        if 0 < len(src) - n == 1:
+            if _w(src) <= max_px:
+                n = len(src)
+            else:
+                n = max(min_keep, n - 1)
+        return max(1, n)
+
+    pages: List[List[str]] = []
+    while remaining:
+        lines: List[str] = []
+        for _ in range(max_lines):
+            if not remaining:
+                break
+            n = _break_at(remaining)
+            if n >= len(remaining):
+                lines.append(remaining)
+                remaining = ""
+                break
+            last_slot = len(lines) == max_lines - 1
+            if last_slot and ellipsis:
+                chunk = remaining[:n]
+                while chunk and _w(chunk + "…") > max_px:
+                    chunk = chunk[:-1]
+                lines.append((chunk + "…") if chunk else "…")
+                remaining = ""
+                break
+            lines.append(remaining[:n])
+            remaining = remaining[n:].lstrip()
+        if lines:
+            pages.append(lines)
+        else:
+            break
+        if ellipsis:
+            break
+    return pages or [[" "]], remaining
+
+
+def _caption_font_size(screen_h: int) -> int:
+    """720p で 36、1080p で 44。"""
+    return max(36, min(44, int(round(screen_h * 0.05))))
+
+
+def _is_spoken_filler_line(text: str) -> bool:
+    """挨拶・読み上げ専用行は画面テキスト（OST）に混ぜない。"""
+    t = str(text or "").strip()
+    if len(t) < 6:
+        return True
+    markers = (
+        "おはよう",
+        "こんばんは",
+        "お疲れ",
+        "マイカブ",
+        "みのり",
+        "株野",
+        "カリン",
+        "皆さん",
+        "よろしく",
+        "それでは",
+        "いってらっしゃい",
+        "チャンネル登録",
+    )
+    return any(m in t for m in markers)
+
+
+def _is_studio_diagram_path(path_str: str) -> bool:
+    name = str(path_str or "").lower().replace("\\", "/")
+    return any(
+        k in name
+        for k in (
+            "/diagrams/",
+            "news_bundle",
+            "impact_flow",
+            "market_board",
+            "capital_flow",
+            "checklist",
+        )
+    )
+
+
+def _densify_on_screen_lines(
+    sc: dict,
+    *,
+    min_lines: int = 3,
+    max_lines: int = 5,
+) -> List[str]:
+    """文字中心シーンの OST を最低行数まで補完（画面が寂しくならないように）。"""
+    raw = sc.get("on_screen_text") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    lines: List[str] = []
+    for t in raw:
+        s = str(t).strip()
+        if s and s not in lines and not _is_spoken_filler_line(s):
+            lines.append(s)
+    if len(lines) >= min_lines:
+        return lines[:max_lines]
+
+    extras: List[str] = []
+    # 読み上げ文・字幕(segments)は OST に混ぜない（挨拶が画面に出るのを防ぐ）
+    company = str(sc.get("company_name") or sc.get("related_company_name") or "").strip()
+    ticker = str(sc.get("ticker") or sc.get("related_ticker") or "").strip()
+    if company:
+        extras.append(f"{company}の材料を確認")
+    if ticker:
+        extras.append(f"{ticker} の値動きに注意")
+    extras.extend(
+        [
+            "地合いと切り分けて見る",
+            "関連セクターの波及を確認",
+            "寄り付きの反応を要チェック",
+            "個別より選別の姿勢を維持",
+            "指数とニュースの整合を確認",
+        ]
+    )
+    for ex in extras:
+        if len(lines) >= min_lines:
+            break
+        if ex and ex not in lines and not _is_spoken_filler_line(ex):
+            lines.append(ex)
+    return lines[:max_lines]
+
+
 def _immersive_price_change_sign(lines: List[str]) -> Optional[str]:
     """on_screen_text 全体から騰落符号を推定（枠色・文字色を一致させる）。"""
     for ln in lines[:6]:
@@ -334,9 +672,241 @@ def _label_text_color_for_immersive(line: str, *, change_sign: Optional[str] = N
     return "#1A237E"
 
 
-def _asset_for_emotion(assets_dir: Path, emotion: str, is_shorts: bool = False) -> Optional[Path]:
+def _render_title_pill_clip(
+    section_title: str,
+    *,
+    font_path: Optional[str],
+    max_width: int,
+    duration: float,
+    start: float,
+    scale: float = 1.0,
+) -> Tuple[ImageClip, int, int]:
+    """
+    タイトルピルをPillowで一体生成（枠と文字の垂直ずれを防ぐ）。
+    scale<1 で情報量が多いシーン向けにコンパクト化。
+    returns: (clip, width, height)
+    """
+    ink = ink_color()
+    cream = STUDIO_SOFT["surface_cream_solid"]
+    blue = STUDIO_SOFT["soft_blue"]
+    s = max(0.62, min(1.0, float(scale)))
+    pad_x, pad_y = int(56 * s), int(18 * s)
+    display = section_title
+    font_size = max(36, int(56 * s))
+    tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+    inner_max = max_width - int(pad_x * 2) - 48
+    font = _pil_font(font_path, font_size)
+    wrap_units = max(8, inner_max // max(1, font_size // 2))
+
+    def _title_lines_for_size(fs: int) -> List[str]:
+        f = _pil_font(font_path, fs)
+        wrapped = _wrap_text_jp(display, wrap_units)
+        lines = [ln for ln in wrapped.split("\n") if ln.strip()]
+        if len(lines) > 2:
+            lines = lines[:2]
+            if lines[-1]:
+                lines[-1] = lines[-1][: max(6, len(lines[-1]) - 1)] + "…"
+        return lines or [display[:20]]
+
+    title_lines = _title_lines_for_size(font_size)
+    min_fs = max(30, int(34 * s))
+    metrics = []
+    while font_size >= min_fs:
+        font = _pil_font(font_path, font_size)
+        title_lines = _title_lines_for_size(font_size)
+        metrics = []
+        max_tw = 0
+        total_th = 0
+        for i, ln in enumerate(title_lines):
+            bb = td.textbbox((0, 0), ln, font=font)
+            tw, th = bb[2] - bb[0], bb[3] - bb[1]
+            metrics.append((ln, bb, tw, th))
+            max_tw = max(max_tw, tw)
+            total_th += th
+            if i:
+                total_th += 6
+        if max_tw + pad_x * 2 + 48 <= max_width:
+            break
+        font_size -= 2
+    tw = max(m[2] for m in metrics)
+    th = total_th
+
+    w = min(max_width, tw + pad_x * 2 + 48)
+    h = max(int(84 * s), th + pad_y * 2)
+
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (5, 8, w - 2, h - 2),
+        radius=max(20, h // 2),
+        fill=(44, 36, 32, int(STUDIO_SOFT.get("panel_shadow_alpha", 72))),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(10))
+    img = Image.alpha_composite(img, shadow)
+    draw = ImageDraw.Draw(img)
+    outline = STUDIO_SOFT.get("panel_outline", (*blue, 200))
+    draw.rounded_rectangle(
+        (2, 2, w - 7, h - 6),
+        radius=max(18, (h - 8) // 2),
+        fill=(*cream, int(STUDIO_SOFT.get("panel_cream_alpha", 250))),
+        outline=outline if isinstance(outline, tuple) else (*blue, 200),
+        width=3,
+    )
+    box_top, box_bottom = 2, h - 6
+    cy = (box_top + box_bottom) // 2 - 1
+    draw.ellipse((22, cy - 8, 40, cy + 8), fill=(*blue, 255))
+    tx = 56 + tw // 2
+    y_cursor = cy - th // 2
+    for i, (ln, bb, _ltw, lth) in enumerate(metrics):
+        try:
+            draw.text((tx, y_cursor + lth // 2), ln, font=font, fill=(*ink, 255), anchor="mm")
+        except TypeError:
+            draw.text((56, y_cursor - bb[1]), ln, font=font, fill=(*ink, 255))
+        y_cursor += lth + (6 if i < len(metrics) - 1 else 0)
+
+    clip = _rgba_image_clip(img, duration=duration, start=start)
+    return clip, w, h
+
+
+def _render_summary_band_clip(
+    lines: List[str],
+    *,
+    font_path: Optional[str],
+    max_width: int,
+    fill_rgb: Tuple[int, int, int],
+    duration: float,
+    start: float,
+    font_size: int = 42,
+    force_width: Optional[int] = None,
+    pad_y: int = 22,
+    min_height: int = 0,
+    align: str = "center",
+    pad_x: int = 36,
+) -> Tuple[ImageClip, int, int]:
+    """要約帯を Pillow 一体描画（枠内垂直中央）。帯幅は max_width を超えない。"""
+    clean = [str(x).strip() for x in lines if str(x).strip()]
+    if not clean:
+        clean = [" "]
+    font = _pil_font(font_path, font_size)
+    line_gap = max(6, font_size // 6)
+    tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+    metrics = []
+    max_tw = 0
+    total_th = 0
+    for i, ln in enumerate(clean):
+        bb = td.textbbox((0, 0), ln, font=font)
+        tw = bb[2] - bb[0]
+        th = bb[3] - bb[1]
+        metrics.append((ln, bb, tw, th))
+        max_tw = max(max_tw, tw)
+        total_th += th
+        if i:
+            total_th += line_gap
+
+    pad_x, pad_y = int(pad_x), int(pad_y)
+    content_w = max(280, max_tw + pad_x * 2)
+    if force_width is not None:
+        w = min(int(max_width), max(280, int(force_width)))
+    else:
+        w = min(int(max_width), content_w)
+    h = max(76, int(min_height or 0), total_th + pad_y * 2)
+    img = _draw_cream_rounded_band(
+        (w, h),
+        radius=22,
+        cream_alpha=int(STUDIO_SOFT.get("panel_cream_alpha", 250)),
+        stage=True,
+    )
+    draw = ImageDraw.Draw(img)
+    usable_h = h - 7
+    usable_w = w - 5
+    y_cursor = (usable_h - total_th) // 2
+    for i, (ln, bb, tw, th) in enumerate(metrics):
+        cy = y_cursor + th // 2
+        if align == "left":
+            x = pad_x
+            try:
+                draw.text((x, cy), ln, font=font, fill=(*fill_rgb, 255), anchor="lm")
+            except TypeError:
+                draw.text((x, y_cursor - bb[1]), ln, font=font, fill=(*fill_rgb, 255))
+        else:
+            cx = usable_w // 2
+            try:
+                draw.text((cx, cy), ln, font=font, fill=(*fill_rgb, 255), anchor="mm")
+            except TypeError:
+                draw.text((cx - tw // 2, y_cursor - bb[1]), ln, font=font, fill=(*fill_rgb, 255))
+        y_cursor += th + (line_gap if i < len(metrics) - 1 else 0)
+
+    return _rgba_image_clip(img, duration=duration, start=start), w, h
+
+
+def _render_caption_band_clip(
+    text: str,
+    *,
+    font_path: Optional[str],
+    max_width: int,
+    fill_rgb: Tuple[int, int, int],
+    duration: float,
+    start: float,
+    font_size: int = 36,
+    lines: Optional[List[str]] = None,
+) -> Tuple[ImageClip, int, int]:
+    """話者色つき字幕帯。キャラ間幅いっぱいにし、常に2行分の縦を確保する。"""
+    font = _pil_font(font_path, font_size)
+    text_max_px = max(80, int(max_width) - 80)
+    if lines is None:
+        lines = _wrap_text_to_px(
+            str(text or "").strip(),
+            font,
+            text_max_px,
+            max_lines=2,
+            ellipsis=False,
+        )
+    line_gap = max(8, font_size // 5)
+    tmp = Image.new("RGBA", (8, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+    line_hs = []
+    for ln in lines:
+        bb = td.textbbox((0, 0), ln, font=font)
+        line_hs.append(bb[3] - bb[1])
+    while len(line_hs) < 2:
+        line_hs.append(int(font_size * 1.35))
+    pad_y = 22
+    two_line_h = pad_y * 2 + sum(line_hs[:2]) + line_gap + 10
+    return _render_summary_band_clip(
+        lines,
+        font_path=font_path,
+        max_width=max_width,
+        fill_rgb=fill_rgb,
+        duration=duration,
+        start=start,
+        font_size=font_size,
+        force_width=int(max_width),
+        pad_y=pad_y,
+        min_height=two_line_h,
+    )
+
+def _asset_for_emotion(
+    assets_dir: Path,
+    emotion: str,
+    is_shorts: bool = False,
+    speaker: str = "minori",
+) -> Optional[Path]:
+    """話者ごとの立ち絵。カリンは characters.json の images（仮置き）を優先。"""
+    sp = (speaker or "minori").strip().lower()
+    if sp == "karin":
+        named = get_character_image_name("karin", emotion)
+        if named:
+            p = assets_dir / named
+            if p.exists():
+                return p
+            # emotion 専用が無くても normal にフォールバック済みのはずだが念のため
+            p_n = assets_dir / (get_character_image_name("karin", "normal") or "")
+            if p_n.exists():
+                return p_n
     if is_shorts:
-        # ショート動画専用：mini.png を優先
         candidates = [
             assets_dir / "mini.png",
             assets_dir / f"character_{emotion}.png",
@@ -346,7 +916,7 @@ def _asset_for_emotion(assets_dir: Path, emotion: str, is_shorts: bool = False) 
         candidates = [
             assets_dir / f"character_{emotion}.png",
             assets_dir / f"{emotion}.png",
-            assets_dir / "character_normal.png", 
+            assets_dir / "character_normal.png",
         ]
     for p in candidates:
         if p.exists():
@@ -409,25 +979,201 @@ def _load_image_clip(path: Path, size: Tuple[int, int], crop_to_aspect: bool = F
             
     return clip.resized(new_size=size)
 
-def _load_char_with_chromakey(path: Path, *, height: Optional[int] = None, width: Optional[int] = None, flip_h: bool = False) -> ImageClip:
-    """キャラ画像のグリーンバックを透過させて読み込む。リサイズは高さまたは幅を指定。"""
+
+def _load_rgba_image_clip(path: Path) -> ImageClip:
+    """PNG（透過含む）を ImageClip(+mask) として読む。"""
+    with Image.open(str(path)) as img:
+        img = img.convert("RGBA")
+        arr = np.array(img)
+    rgb = ImageClip(arr[:, :, :3])
+    mask = ImageClip(arr[:, :, 3].astype("float") / 255.0, is_mask=True)
+    return rgb.with_mask(mask)
+
+
+def _render_news_focus_clip(
+    *,
+    ticker: str,
+    company: str,
+    lines: List[str],
+    font_path: Optional[str],
+    max_width: int,
+    duration: float,
+    start: float,
+    min_height: int = 420,
+) -> Tuple[ImageClip, int, int]:
+    """チャート無しニュース向けの中央フォーカスカード（余白埋め）。"""
+    clean_lines = [str(x).strip() for x in lines if str(x).strip()][:6]
+    ink = ink_color()
+    cream = STUDIO_SOFT["surface_cream_solid"]
+    blue = STUDIO_SOFT["soft_blue"]
+    ticker_font = _pil_font(font_path, 88)
+    company_font = _pil_font(font_path, 42)
+    # トピックは文字数が少なくても 48px だと1行に収まらない。本文は 36。
+    body_font = _pil_font(font_path, 36 if not ticker else 40)
+
+    tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+
+    def _m(text: str, font) -> Tuple[int, int, Tuple[int, int, int, int]]:
+        bb = td.textbbox((0, 0), text, font=font)
+        return bb[2] - bb[0], bb[3] - bb[1], bb
+
+    pad_x, pad_y = 48, 36
+    company_disp = company[:36] + ("…" if len(company) > 36 else "")
+    tw, th, _ = _m(ticker[:10] or "NEWS", ticker_font) if ticker else (0, 0, (0, 0, 0, 0))
+    cw, ch, _ = _m(company_disp, company_font) if company_disp else (0, 0, (0, 0, 0, 0))
+    wrap_w = max(280, int(max_width) - pad_x * 2)
+    inner_line_gap = 6
+    bullet_item_gap = 20
+    bullet_blocks: List[List[Tuple[str, int, int, Tuple[int, int, int, int]]]] = []
+    max_line_w = 0
+    lines_h = 0
+    for ln in clean_lines:
+        disp = ln if ln.startswith("・") or ln.startswith("•") else f"・{ln}"
+        wrapped = _wrap_text_to_px(disp, body_font, wrap_w, max_lines=2, ellipsis=False)
+        block = []
+        for i, wln in enumerate(wrapped):
+            if i > 0 and not wln.startswith("　"):
+                wln = "　" + wln
+            lw, lh, bb = _m(wln, body_font)
+            block.append((wln, lw, lh, bb))
+            max_line_w = max(max_line_w, lw)
+            lines_h += lh + inner_line_gap
+        if block:
+            lines_h -= inner_line_gap
+            lines_h += bullet_item_gap
+            bullet_blocks.append(block)
+    if lines_h:
+        lines_h -= bullet_item_gap
+
+    header_w = tw + (28 + cw if company_disp else 0)
+    inner_w = max(header_w, max_line_w)
+    w = int(max_width)
+    content_h = pad_y * 2 + max(th, ch, 1) + (36 + lines_h if bullet_blocks else 0)
+    h = max(content_h, 240)
+
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (6, 10, w - 2, h - 2),
+        radius=28,
+        fill=(44, 36, 32, int(STUDIO_SOFT.get("panel_shadow_alpha", 72))),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(12))
+    img = Image.alpha_composite(img, shadow)
+    draw = ImageDraw.Draw(img)
+    outline = STUDIO_SOFT.get("panel_outline", (*blue, 200))
+    draw.rounded_rectangle(
+        (2, 2, w - 6, h - 6),
+        radius=26,
+        fill=(*cream, int(STUDIO_SOFT.get("panel_cream_alpha", 250))),
+        outline=outline if isinstance(outline, tuple) else (*blue, 200),
+        width=3,
+    )
+
+    # 中身は上から詰める
+    y = pad_y
+    if ticker:
+        pill_pad_x, pill_pad_y = 28, 18
+        pill_w = tw + pill_pad_x * 2
+        pill_h = max(th + pill_pad_y * 2, 72)
+        draw.rounded_rectangle(
+            (pad_x, y, pad_x + pill_w, y + pill_h),
+            radius=18,
+            fill=(255, 255, 255, 255),
+            outline=(*blue, 180),
+            width=3,
+        )
+        cx = pad_x + pill_w / 2
+        cy = y + pill_h / 2 - 2
+        try:
+            draw.text((cx, cy), ticker[:10], font=ticker_font, fill=(26, 35, 126, 255), anchor="mm")
+        except TypeError:
+            draw.text(
+                (pad_x + pill_pad_x, y + (pill_h - th) // 2),
+                ticker[:10],
+                font=ticker_font,
+                fill=(26, 35, 126, 255),
+            )
+        if company_disp:
+            draw.text(
+                (pad_x + pill_w + 20, y + (pill_h - ch) // 2),
+                company_disp,
+                font=company_font,
+                fill=(*ink, 255),
+            )
+        y += max(pill_h, ch) + 28
+    elif company_disp:
+        draw.text((pad_x, y), company_disp, font=company_font, fill=(*ink, 255))
+        y += ch + 28
+
+    for bi, block in enumerate(bullet_blocks):
+        for ln, lw, lh, bb in block:
+            try:
+                draw.text((pad_x, y + lh / 2), ln, font=body_font, fill=(*ink, 255), anchor="lm")
+            except TypeError:
+                draw.text((pad_x, y - bb[1]), ln, font=body_font, fill=(*ink, 255))
+            y += lh + inner_line_gap
+        y -= inner_line_gap
+        if bi < len(bullet_blocks) - 1:
+            y += bullet_item_gap
+
+    return _rgba_image_clip(img, duration=duration, start=start), w, h
+
+
+def _load_char_with_chromakey(
+    path: Path,
+    *,
+    height: Optional[int] = None,
+    width: Optional[int] = None,
+    flip_h: bool = False,
+    max_width: Optional[int] = None,
+    keep_top: Optional[int] = None,
+    crop_from: str = "center",
+) -> ImageClip:
+    """キャラ画像のグリーンバックを透過させて読み込む。幅超過は縮小せず左右クロップ。"""
     with Image.open(str(path)) as img:
         img = img.convert("RGBA")
         if flip_h:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
-        
+
         data = np.array(img)
-        # グリーンバック判定
-        r, g, b, a = data[:,:,0], data[:,:,1], data[:,:,2], data[:,:,3]
+        r, g, b, a = data[:, :, 0], data[:, :, 1], data[:, :, 2], data[:, :, 3]
         mask = (g > 100) & (g > r) & (g > b)
         data[mask] = [0, 0, 0, 0]
-        
-        clip = ImageClip(data)
+
+        alpha = data[:, :, 3]
+        ys, xs = np.where(alpha > 8)
+        if len(xs) > 0 and len(ys) > 0:
+            x0, x1 = int(xs.min()), int(xs.max()) + 1
+            y0, y1 = int(ys.min()), int(ys.max()) + 1
+            data = data[y0:y1, x0:x1]
+
+        im = Image.fromarray(data, "RGBA")
         if height:
-            clip = clip.resized(height=height)
+            nh = int(height)
+            nw = max(1, int(im.width * nh / max(im.height, 1)))
+            im = im.resize((nw, nh), Image.Resampling.LANCZOS)
         elif width:
-            clip = clip.resized(width=width)
-        return clip
+            nw = int(width)
+            nh = max(1, int(im.height * nw / max(im.width, 1)))
+            im = im.resize((nw, nh), Image.Resampling.LANCZOS)
+
+        if keep_top and im.height > int(keep_top):
+            im = im.crop((0, 0, im.width, int(keep_top)))
+
+        if max_width and im.width > int(max_width):
+            mw = int(max_width)
+            if crop_from == "left":
+                im = im.crop((0, 0, mw, im.height))
+            elif crop_from == "right":
+                im = im.crop((im.width - mw, 0, im.width, im.height))
+            else:
+                x0 = (im.width - mw) // 2
+                im = im.crop((x0, 0, x0 + mw, im.height))
+
+        return ImageClip(np.array(im))
 
 def _load_frame_with_chromakey(path: Path, size: Tuple[int, int]) -> ImageClip:
     """グリーンバック(#00FF00)を透過させてImageClipとして読み込む"""
@@ -474,9 +1220,12 @@ def _calculate_smart_layout(
     *,
     top_reserved_h: Optional[int] = None,
     image_ratio_when_text: float = 0.68,
+    content_x: Optional[int] = None,
+    content_w: Optional[int] = None,
+    bottom_reserved_h: Optional[int] = None,
 ) -> List[Dict]:
     """
-    画像数に応じて、キャラクター（右側20%）や字幕（下部）、セクションタイトル（上部）を避けた最適な座標とサイズを計算する。
+    画像数に応じて、キャラクター（左右ガター）や字幕（下部）、セクションタイトル（上部）を避けた最適な座標とサイズを計算する。
     has_text が True の場合は、画像の下にテキストを表示するためのスペースを確保する。
     two_image_layout: 2枚の場合のレイアウト ("horizontal" または "vertical")
     """
@@ -484,70 +1233,55 @@ def _calculate_smart_layout(
     is_shorts = sw < sh
     
     if is_shorts:
-        # --- ショート動画（縦型）のレイアウト ---
-        # 案B（注目銘柄）を想定：上に画像、下に要約、さらに下にキャラ
         margin = 40
         available_w = sw - (margin * 2)
-        
-        # 画像は最上部に配置
         img_h = int(sh * 0.45)
-        # ここを増やすと「案Bの画像」が下にズレる（=余白が増える）
         start_y = 110
-        
         positions = []
         if count >= 1:
-            # 1枚目をメインとして配置
             positions.append({"x": margin, "y": start_y, "w": available_w, "h": img_h})
         return positions
 
-    # --- 横型動画のレイアウト（既存） ---
-    # 1080p用に定数をスケールアップ
-    text_area_h = 165 if show_subtitles else 40
+    text_area_h = int(bottom_reserved_h) if bottom_reserved_h is not None else (200 if show_subtitles else 40)
     title_area_h = top_reserved_h if top_reserved_h is not None else 128
     margin = 22
-    
-    # メイン 80%, キャラ 20%
-    main_area_w = int(sw * 0.8)
-    
-    # 有効な高さ（タイトルの下から字幕の上まで）
-    available_h = sh - text_area_h - title_area_h - (margin * 2)
-    start_x = margin
-    start_y = title_area_h + margin
 
-    # テキスト併用時は、画像エリアの最大高さを制限する
-    # （event_calendar 等は表が主役なので比率を上げられる）
+    if content_x is not None and content_w is not None:
+        start_x = int(content_x) + margin
+        main_area_w = max(360, int(content_w) - margin * 2)
+    else:
+        main_area_w = int(sw * 0.8)
+        start_x = margin
+
+    available_h = sh - text_area_h - title_area_h - (margin * 2)
+    # immersive（bottom_reserved指定時）はタイトル直下から詰める
+    start_y = title_area_h + (8 if bottom_reserved_h is not None else margin)
     img_available_h = int(available_h * float(image_ratio_when_text)) if has_text else available_h
 
     positions = []
     if count == 1:
-        # 1枚ならメイン領域内で最大化
-        w = main_area_w - (margin * 2)
+        w = main_area_w
         h = img_available_h
         positions.append({"x": start_x, "y": start_y, "w": w, "h": h})
     elif count == 2:
-        # 2枚の場合：左右並列 (horizontal) のみとする
         w = (main_area_w // 2) - margin
         h = img_available_h
         positions.append({"x": start_x, "y": start_y, "w": w, "h": h})
         positions.append({"x": start_x + w + margin, "y": start_y, "w": w, "h": h})
     elif count == 3:
-        # 3枚なら逆三角形（上1枚、下2枚）
         h = (img_available_h // 2) - (margin // 2)
         w_half = (main_area_w // 2) - (margin // 2)
-        # 上段中央
         positions.append({"x": start_x + (main_area_w - w_half)//2, "y": start_y, "w": w_half, "h": h})
-        # 下段左右
         positions.append({"x": start_x, "y": start_y + h + margin, "w": w_half, "h": h})
         positions.append({"x": start_x + w_half + margin, "y": start_y + h + margin, "w": w_half, "h": h})
     elif count >= 4:
-        # 4枚以上ならグリッド状
         w = (main_area_w // 2) - (margin // 2)
         h = (img_available_h // 2) - (margin // 2)
         positions.append({"x": start_x, "y": start_y, "w": w, "h": h})
         positions.append({"x": start_x + w + margin, "y": start_y, "w": w, "h": h})
         positions.append({"x": start_x, "y": start_y + h + margin, "w": w, "h": h})
         positions.append({"x": start_x + w + margin, "y": start_y + h + margin, "w": w, "h": h})
-            
+
     return positions
 
 def render_scenes_to_video(
@@ -594,12 +1328,32 @@ def render_scenes_to_video(
         # ショート: 画像下端・テキスト枠下端（相対配置用）
         shorts_img_bottom_y: Optional[int] = None
         shorts_text_bottom_y: Optional[int] = None
+        immersive_chart_bottom: Optional[int] = None
+        immersive_chart_right: Optional[int] = None
+        immersive_chart_top: Optional[int] = None
+        immersive_chart_h: Optional[int] = None
+        chart_caption_lines: List[str] = []
         
         # --- 1. 背景レイヤー ---
         bg_name = sc.get("bg_name", "bg_illust.png")
         is_shorts = size[0] < size[1] # 縦長ならショート
         use_immersive = is_immersive_mode(presentation_mode, video_type="shorts" if is_shorts else "horizontal")
-        
+        # immersive: 左右キャラ用ガターを空け、中央に図解・要約・字幕を寄せる
+        if use_immersive and (not is_shorts):
+            cx, _, cw, _ = immersive_content_box(size)
+            content_x, content_w = cx, cw
+            char_slot_w, char_visible_h, char_band_top = immersive_char_band(size)
+            telop_x, telop_w = immersive_telop_box(size)
+            cap_font = _caption_font_size(size[1])
+            # 2行字幕 + 下余白。チャート要約はこの上に別枠で確保する
+            caption_slot_h = 40 + cap_font * 2 + max(8, cap_font // 5) + 16
+            bottom_reserved_h = max(caption_slot_h + 12, int(char_visible_h * 0.42) + 24)
+        else:
+            content_x, content_w = None, None
+            bottom_reserved_h = None
+            char_slot_w, char_visible_h, char_band_top = 0, 0, size[1]
+            telop_x, telop_w = 0, size[0]
+
         if bg_name == "bg_subscribe":
             # チャンネル登録シーンは単色（目に優しいクリーム色）
             bg_clip = ColorClip(size, color=(255, 253, 208))
@@ -629,41 +1383,85 @@ def render_scenes_to_video(
 
         # 各シーンの背景は必ずシーン区間に合わせる（未設定だと t=0 に重なり全面を覆う）
         bg_clip = bg_clip.with_duration(total_scene_duration).with_start(cumulative_time)
+        # immersive: 背景を少しぼかして暗めにし、前面カードの可読性を上げる
+        if use_immersive and (not is_shorts) and sc.get("section_title") != "subscribe":
+            try:
+                fr = bg_clip.get_frame(0)
+                im = Image.fromarray(fr).filter(ImageFilter.GaussianBlur(radius=1.2))
+                arr = np.clip(np.array(im, dtype=np.float32) * 0.97, 0, 255).astype(np.uint8)
+                bg_clip = (
+                    ImageClip(arr)
+                    .with_duration(total_scene_duration)
+                    .with_start(cumulative_time)
+                )
+            except Exception as e:
+                print(f"[WARN] immersive bg soften failed: {e}")
         all_clips.append(bg_clip)
+        if use_immersive and (not is_shorts) and sc.get("section_title") != "subscribe":
+            try:
+                scrim = _make_immersive_scrim_clip(
+                    size, duration=total_scene_duration, start=cumulative_time
+                )
+                all_clips.append(scrim)
+            except Exception as e:
+                print(f"[WARN] immersive scrim failed: {e}")
 
         # --- 2. セクションタイトル (動的リサイズ) ---
         section_title = sc.get("section_title")
         # ショートではタイトル表示をしない
         if (not is_shorts) and section_title and section_title != "subscribe":
             try:
-                # 先にテキストクリップを作成してサイズを取得
-                title_clip = TextClip(
-                    text=section_title,
-                    font=font_to_use,
-                    # レイアウトテスト(step1)と同等の見え方に揃える
-                    font_size=54,
-                    color="#4A2711",
-                    method="label",
-                    size=(None, 90),
-                ).with_duration(total_scene_duration).with_start(cumulative_time)
-                
-                # テキストサイズに合わせて枠をリサイズ (パディングを追加)
-                frame_w = title_clip.w + 200
-                frame_h = title_clip.h + 120
-                
-                frame_path = images_dir / "title_frame.png"
-                if frame_path.exists():
-                    t_frame = _load_frame_with_chromakey(frame_path, (frame_w, frame_h))
-                    all_clips.append(t_frame.with_position((0, 15)).with_duration(total_scene_duration).with_start(cumulative_time))
-                    # タイトル枠の下端 + 少しの余白を、画像レイアウトの予約領域として使う
-                    top_reserved_h_for_scene = max(title_area_h, 15 + int(frame_h) + 10)
-
-                # テキストを枠の中央に配置 (垂直方向のオフセットを調整)
-                text_y = (frame_h - title_clip.h) // 2 - 5
-                title_clip = title_clip.with_position((95, text_y))
-                all_clips.append(title_clip)
+                if use_immersive:
+                    # 情報量が多いときだけタイトルをコンパクト化（通常時は現状維持）
+                    tfs_early = sc.get("target_files") or []
+                    has_chart_early = bool(tfs_early) or str(sc.get("image_type", "")).startswith(
+                        "chart"
+                    )
+                    density = immersive_density_score(sc, has_chart=has_chart_early)
+                    title_scale = 0.84 if has_chart_early else 0.92
+                    if density >= 0.75:
+                        title_scale = max(0.72, title_scale - (density - 0.7) * 0.25)
+                    max_w = max(520, (content_w or int(size[0] * 0.72)) - 16)
+                    title_pill, frame_w, frame_h = _render_title_pill_clip(
+                        section_title,
+                        font_path=font_to_use if isinstance(font_to_use, str) else None,
+                        max_width=max_w,
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        scale=title_scale,
+                    )
+                    frame_x = (content_x or 0) + max(0, ((content_w or size[0]) - frame_w) // 2)
+                    frame_y = 56 if title_scale >= 0.88 else max(32, int(56 - (0.92 - title_scale) * 80))
+                    all_clips.append(title_pill.with_position((frame_x, frame_y)))
+                    top_reserved_h_for_scene = frame_y + frame_h + 12
+                    # 後段（メイン配置）でタイトル／テロップ／キャラに被らないよう参照
+                    sc["_immersive_density"] = density
+                    sc["_immersive_title_scale"] = title_scale
+                else:
+                    title_clip = TextClip(
+                        text=section_title,
+                        font=font_to_use,
+                        font_size=54,
+                        color="#4A2711",
+                        method="label",
+                        size=(None, 90),
+                    ).with_duration(total_scene_duration).with_start(cumulative_time)
+                    frame_w = title_clip.w + 200
+                    frame_h = title_clip.h + 120
+                    frame_path = images_dir / "title_frame.png"
+                    if frame_path.exists():
+                        t_frame = _load_frame_with_chromakey(frame_path, (frame_w, frame_h))
+                        all_clips.append(
+                            t_frame.with_position((0, 15))
+                            .with_duration(total_scene_duration)
+                            .with_start(cumulative_time)
+                        )
+                        top_reserved_h_for_scene = max(title_area_h, 15 + int(frame_h) + 10)
+                    text_y = (frame_h - title_clip.h) // 2 - 5
+                    title_clip = title_clip.with_position((95, text_y))
+                    all_clips.append(title_clip)
             except Exception as e:
-                print(f"⚠️ セクションタイトル生成失敗: {e}")
+                print(f"[WARN] section title failed: {e}")
 
         # --- 2.25 ショートB 上部タイトル（黒帯＋白文字） ---
         # ※Shorts B のみ対象（explained_term が無い＝用語解説ではない）
@@ -786,15 +1584,35 @@ def render_scenes_to_video(
             # 実際に存在するファイルのみを対象にする
             target_files = valid_target_files
 
+            diagram_only = bool(
+                target_files
+                and all(_is_studio_diagram_path(str(p)) for p in target_files)
+            )
+            ost_preview = [on_screen_text] if isinstance(on_screen_text, str) else (on_screen_text or [])
+            chart_side_by_side = bool(
+                (not is_shorts)
+                and use_immersive
+                and (not diagram_only)
+                and any(str(t).strip() for t in ost_preview)
+            )
+            layout_has_text = bool(on_screen_text) and (not diagram_only) and (not chart_side_by_side)
+
             # テキストがあるかどうか、および画像の向きをレイアウト計算に伝える
+            layout_x, layout_w = content_x, content_w
+            if (not is_shorts) and use_immersive and diagram_only:
+                layout_x = int(size[0] * 0.035)
+                layout_w = int(size[0] * 0.93)
             layout_configs = _calculate_smart_layout(
                 len(target_files), size, 
-                has_text=bool(on_screen_text),
+                has_text=layout_has_text,
                 image_paths=resolved_paths,
                 two_image_layout=sc.get("two_image_layout", "horizontal"),
                 show_subtitles=show_subtitles,
                 top_reserved_h=top_reserved_h_for_scene,
-                image_ratio_when_text=0.82 if is_event_calendar_scene else 0.68,
+                image_ratio_when_text=0.88 if is_event_calendar_scene else (1.0 if use_immersive and diagram_only else (0.98 if use_immersive else 0.68)),
+                content_x=layout_x,
+                content_w=layout_w,
+                bottom_reserved_h=bottom_reserved_h,
             )
             for idx, img_name in enumerate(target_files):
                 if idx >= len(layout_configs): break
@@ -802,28 +1620,42 @@ def render_scenes_to_video(
                 visual_path = _asset_for_visual(images_dir, img_name)
                 if visual_path:
                     try:
-                        v_clip = ImageClip(str(visual_path))
-                        # アスペクト比維持しつつ枠内に収める
-                        v_clip = v_clip.resized(width=conf["w"])
-                        if v_clip.h > conf["h"]:
-                            v_clip = v_clip.resized(height=conf["h"])
-
-                        # immersive: チャート系だけ“軽いズーム”で番組感を出す（classicは維持）
-                        # 画面からはみ出さないよう、最初に少しだけ小さくしてからズームする。
+                        v_clip = _load_rgba_image_clip(visual_path)
                         section_title = str(sc.get("section_title", "") or "")
                         img_name_l = str(img_name).lower()
-                        # イベントカレンダー（決算/株主総会の表）はズーム厳禁・見切れ厳禁
                         is_event_calendar = (
                             ("イベントカレンダー" in section_title)
                             or ("event_calendar" in section_title.lower())
                             or ("kessan_schedule" in img_name_l)
                             or ("soukai_schedule" in img_name_l)
                         )
-                        # チャート系のみ軽いズーム（表やパネルは対象外）
-                        is_chart = str(sc.get("image_type", "")).startswith("chart") or ("chart" in img_name_l)
-                        if (not is_shorts) and use_immersive and is_chart and (not is_event_calendar) and total_scene_duration >= 2.0:
+                        is_chart = (
+                            (
+                                str(sc.get("image_type", "")).startswith("chart")
+                                or "chart" in img_name_l
+                                or "stock_charts" in img_name_l.replace("\\", "/")
+                                or "market_charts" in img_name_l.replace("\\", "/")
+                            )
+                            and (not diagram_only)
+                        )
+                        # 図解は横幅優先。チャート横並びは後段で左列に contain（先に全体へ縮めない）
+                        skip_pre_fit = bool(
+                            (not is_shorts) and use_immersive and is_chart and chart_side_by_side
+                        )
+                        if not skip_pre_fit:
+                            if (not is_shorts) and use_immersive and diagram_only:
+                                v_clip = v_clip.resized(width=conf["w"])
+                            else:
+                                v_clip = v_clip.resized(width=conf["w"])
+                                if v_clip.h > conf["h"]:
+                                    v_clip = v_clip.resized(height=conf["h"])
+
+                        # immersive: チャート系だけ“軽いズーム”で番組感を出す（classicは維持）
+                        # 画面からはみ出さないよう、最初に少しだけ小さくしてからズームする。
+                        # immersive は枠埋め拡大済み。classic のみ軽いズーム。
+                        if (not is_shorts) and (not use_immersive) and is_chart and (not is_event_calendar) and total_scene_duration >= 2.0:
                             base_shrink = 0.95
-                            zoom_max = 1.05  # base_shrink * zoom_max <= 1.0 を想定
+                            zoom_max = 1.05
                             zoom_dur = min(2.0, max(0.8, total_scene_duration * 0.35))
                             v_clip = v_clip.resized(base_shrink)
 
@@ -833,10 +1665,8 @@ def render_scenes_to_video(
                                 if t >= zoom_dur:
                                     return zoom_max
                                 u = t / zoom_dur
-                                # easeOutQuad
                                 return 1.0 + (zoom_max - 1.0) * (1.0 - (1.0 - u) * (1.0 - u))
 
-                            # moviepy v2: resized() は係数関数を受け取れる
                             v_clip = v_clip.resized(lambda t: _zoom_factor(float(t)))
 
                         # event_calendar は “contain” をより厳密に（見切れ防止の安全策）
@@ -844,9 +1674,63 @@ def render_scenes_to_video(
                             # すでに枠内に収める処理はあるが、表画像は横長になりがちなので少し余裕を見て縮める
                             v_clip = v_clip.resized(0.97)
                         
-                        # 領域内での中央寄せ
+                        # immersive: 画面中央やや下寄り（タイトル直下に張り付かない）
+                        # 密度高のときはタイトル／テロップ／キャラ帯に被らないよう縦を締める
                         pos_x = conf["x"] + (conf["w"] - v_clip.w) // 2
-                        pos_y = conf["y"] + (conf["h"] - v_clip.h) // 2
+                        if (not is_shorts) and use_immersive:
+                            density = float(sc.get("_immersive_density") or 0.0)
+                            avail_top = int(conf["y"]) + 6
+                            # チャート＋要約は横並びなので、下スロットは取らない
+                            summary_slot = 0 if (is_chart and chart_side_by_side) else (176 if is_chart else 0)
+                            avail_bot = size[1] - int(bottom_reserved_h or 140) - summary_slot - 16
+                            if diagram_only:
+                                avail_bot = size[1] - int(bottom_reserved_h or 140) - 18
+                            if density >= 0.9 and char_visible_h and (not is_chart) and (not diagram_only):
+                                avail_bot = min(
+                                    avail_bot, size[1] - int(char_visible_h * 0.82) - 10
+                                )
+                            max_main_h = max(120, avail_bot - avail_top)
+                            if is_chart and chart_side_by_side:
+                                chart_col_w = max(280, int(conf["w"] * 0.55))
+                                scale = min(
+                                    chart_col_w / max(v_clip.w, 1),
+                                    max_main_h / max(v_clip.h, 1),
+                                )
+                                v_clip = v_clip.resized(scale)
+                                pos_x = int(conf["x"])
+                                leftover = max(0, avail_bot - avail_top - int(v_clip.h))
+                                pos_y = avail_top + leftover // 5
+                                immersive_chart_right = int(pos_x + v_clip.w)
+                                immersive_chart_top = int(pos_y)
+                                immersive_chart_h = int(v_clip.h)
+                            elif is_chart:
+                                scale = min(
+                                    conf["w"] / max(v_clip.w, 1),
+                                    max_main_h / max(v_clip.h, 1),
+                                )
+                                v_clip = v_clip.resized(scale)
+                                pos_x = conf["x"] + (conf["w"] - v_clip.w) // 2
+                                pos_y = avail_top
+                            elif diagram_only and int(v_clip.h) > max_main_h:
+                                v_clip = v_clip.resized(height=max_main_h)
+                                pos_x = conf["x"] + (conf["w"] - v_clip.w) // 2
+                                leftover = max(0, avail_bot - avail_top - int(v_clip.h))
+                                pos_y = avail_top + leftover // 2
+                            elif (not diagram_only) and int(v_clip.h) > max_main_h:
+                                v_clip = v_clip.resized(height=max_main_h)
+                                pos_x = conf["x"] + (conf["w"] - v_clip.w) // 2
+                                leftover = max(0, avail_bot - avail_top - int(v_clip.h))
+                                pos_y = avail_top + leftover // 2
+                            elif diagram_only:
+                                leftover = max(0, avail_bot - avail_top - int(v_clip.h))
+                                pos_y = avail_top + leftover // 2
+                            else:
+                                band_mid = avail_top + max(0, (avail_bot - avail_top - int(v_clip.h)) // 2)
+                                screen_mid = max(avail_top, size[1] // 2 - int(v_clip.h) // 2 + 24)
+                                pos_y = int(0.4 * band_mid + 0.6 * screen_mid)
+                                pos_y = max(avail_top, min(pos_y, avail_bot - int(v_clip.h)))
+                        else:
+                            pos_y = conf["y"] + (conf["h"] - v_clip.h) // 2
                         if is_shorts:
                             img_bottom = int(pos_y + v_clip.h)
                             shorts_img_bottom_y = (
@@ -857,38 +1741,55 @@ def render_scenes_to_video(
                         
                         v_clip = v_clip.with_position((pos_x, pos_y))
                         v_clip = v_clip.with_duration(total_scene_duration).with_start(cumulative_time)
+                        if (not is_shorts) and use_immersive:
+                            immersive_chart_bottom = int(pos_y + v_clip.h)
                         if video_cross > 0:
                             v_clip = v_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                        # immersive: チャートはレイアウト枠(conf)基準で影のみ（色枠は使わない）
+                        # immersive: 図解側が角丸カードなので二重のクリーム板は置かない（影のみ）
                         if (not is_shorts) and use_immersive and is_chart and (not is_event_calendar):
                             try:
-                                box_w, box_h = int(conf["w"]), int(conf["h"])
-                                box_x, box_y = int(conf["x"]), int(conf["y"])
+                                box_w, box_h = int(v_clip.w), int(v_clip.h)
                                 shadow = (
                                     _shadow_clip(
-                                        (box_w + 28, box_h + 28),
-                                        radius=20,
+                                        (box_w + 20, box_h + 20),
+                                        radius=28,
                                         blur=14,
-                                        alpha=70,
+                                        alpha=28,
                                     )
-                                    .with_position((box_x - 6, box_y - 4))
+                                    .with_position((pos_x - 6, pos_y + 4))
                                     .with_duration(total_scene_duration)
                                     .with_start(cumulative_time)
                                 )
                                 if video_cross > 0:
-                                    shadow = shadow.with_effects(
-                                        [FadeIn(video_cross), FadeOut(video_cross)]
-                                    )
+                                    shadow = shadow.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
                                 all_clips.append(shadow)
                             except Exception as e:
-                                print(f"[WARN] チャート影生成失敗: {e}")
+                                print(f"[WARN] chart shadow failed: {e}")
 
                         all_clips.append(v_clip)
                     except Exception as e:
                         print(f"⚠️ ビジュアル表示失敗 ({img_name}): {e}")
         
         # --- 4. 要約テキストパネル (動的リサイズ) ---
-        if on_screen_text:
+        # immersive + ニュース中央: 要約帯は出さない（中央カードと二重）
+        # immersive + 図解: 図の直下に短い補足だけ出す（話しテロップとは別）
+        immersive_news_center = bool(
+            (not is_shorts) and use_immersive and (not target_files) and on_screen_text
+        )
+        skip_summary_band = bool(
+            (not is_shorts) and use_immersive and immersive_news_center
+        )
+        if (not is_shorts) and use_immersive and target_files and on_screen_text:
+            if not all(_is_studio_diagram_path(str(p)) for p in target_files):
+                text_list = [on_screen_text] if isinstance(on_screen_text, str) else on_screen_text
+                for t in text_list:
+                    s = str(t).strip()
+                    if s:
+                        chart_caption_lines.append(s)
+                chart_caption_lines = chart_caption_lines[:6]
+            skip_summary_band = True  # 通常の要約帯ではなく図直下キャプションへ（図解のみは非表示）
+
+        if on_screen_text and (not immersive_news_center) and (not skip_summary_band):
             try:
                 # 豆腐文字（サロゲートペアや特殊記号）対策として、安全な文字に置換
                 formatted_lines = []
@@ -966,7 +1867,6 @@ def render_scenes_to_video(
                 # 横動画レイアウト
                 elif target_files:
                     if use_immersive:
-                        # event_calendar 判定（表は画像主役）
                         section_title_str = str(sc.get("section_title", "") or "")
                         tf_names = [str(x).lower() for x in (target_files or [])]
                         is_event_calendar = (
@@ -974,16 +1874,20 @@ def render_scenes_to_video(
                             or ("event_calendar" in section_title_str.lower())
                             or any(("kessan_schedule" in n) or ("soukai_schedule" in n) for n in tf_names)
                         )
-                        # event_calendar は表画像が主役なので、テキスト枠は控えめに
-                        text_h_max = int(available_h * (0.22 if is_event_calendar else 0.32))
-                        # 位置決めは classic を基準に揃える（ズレが出やすいため）
-                        text_y_base = start_y + int(available_h * (0.79 if is_event_calendar else 0.70)) + margin
-                        text_w = main_area_w - margin * 4
-                        # 画像あり(チャート等)は枠が大きく見えやすいので、文字を少し大きめにする
-                        base_font_size = 48 if is_event_calendar else 52
-                        reduction_per_line = 3
-                        # 短い2行でも枠が小さく見えないよう余白を確保する
-                        frame_padding_h = 60 if is_event_calendar else 80
+                        # 下帯（字幕）の直上にコンパクトな要約を置く → 下余白を埋める
+                        text_w = max(420, (content_w or main_area_w) - 48)
+                        text_h_max = 110 if is_event_calendar else 130
+                        base_font_size = 40 if is_event_calendar else 44
+                        reduction_per_line = 2
+                        frame_padding_h = 28
+                        frame_offset_y = 0
+                        text_offset_y = 0
+                        # 字幕帯の上端付近
+                        telop_top = size[1] - int(bottom_reserved_h or 220) + 8
+                        text_y_base = max(
+                            (top_reserved_h_for_scene or start_y) + 40,
+                            telop_top - text_h_max - 24,
+                        )
                     else:
                         text_h_max = int(available_h * 0.4)
                         text_y_base = start_y + int(available_h * 0.70) + margin - 10
@@ -991,22 +1895,24 @@ def render_scenes_to_video(
                         base_font_size = 40
                         reduction_per_line = 4
                         frame_padding_h = -20
-                    frame_offset_y = 30
-                    # text_offset_y は「引く値」なので、値を大きくすると上に上がる。
-                    # classic の見栄えが良いので、immersive も同等以上に「上寄せ」する。
-                    # frame_padding_h を増やした場合、既存の上寄せだと文字が上に詰まりすぎて見える。
-                    # 画像ありの immersive は少し下げて、枠内の視覚中心に寄せる。
-                    text_offset_y = 15 if use_immersive else 50
+                        frame_offset_y = 30
+                        text_offset_y = 50
                     frame_name = "main_frame.png"
                 else:
                     if use_immersive:
-                        text_h_max = int(available_h * 0.55)
-                        # 位置決めは classic を基準に揃える（テキストのみが下にズレるため）
-                        text_y_base = margin + 280
-                        text_w = main_area_w - 100
-                        base_font_size = 58
-                        reduction_per_line = 4
-                        frame_padding_h = 270
+                        # 画像なし: 中央コンテンツに短いラベル帯（巨大な空枠をやめる）
+                        text_w = max(480, (content_w or main_area_w) - 48)
+                        text_h_max = 140
+                        base_font_size = 48
+                        reduction_per_line = 3
+                        frame_padding_h = 36
+                        frame_offset_y = 0
+                        text_offset_y = 0
+                        telop_top = size[1] - int(bottom_reserved_h or 220) + 8
+                        text_y_base = max(
+                            (top_reserved_h_for_scene or start_y) + 80,
+                            telop_top - text_h_max - 28,
+                        )
                     else:
                         text_h_max = int(available_h * 0.75)
                         text_y_base = margin + 280
@@ -1014,8 +1920,8 @@ def render_scenes_to_video(
                         base_font_size = 54
                         reduction_per_line = 6
                         frame_padding_h = 270
-                    frame_offset_y = 90
-                    text_offset_y = -25
+                        frame_offset_y = 90
+                        text_offset_y = -25
                     frame_name = "main_frame.png"
 
                 # 行数に応じてフォントサイズを調整
@@ -1047,50 +1953,80 @@ def render_scenes_to_video(
                         formatted_lines[0], change_sign=immersive_sign
                     )
 
-                # --- immersive: 方法1（行ごとのTextClipで自前レイアウト） ---
-                # ・captionは使わず、3行を固定座標で並べる
-                # ・emphasis語を含む行だけ色＋短いフェード
-                # emphasis は不安定になりやすいため無効化（表示/アニメしない）。
-                # 以降は全モードで従来の caption で安定表示する。
-                summary_text_for_layout = summary_text
-                summary_clip = TextClip(
-                    text=summary_text_for_layout,
-                    font=font_to_use,
-                    font_size=font_size,
-                    color=label_color,
-                    method="caption",
-                    size=(text_w, text_h_max),
-                    text_align="left",  # 左揃えに変更
-                ).with_duration(total_scene_duration).with_start(cumulative_time)
-                
-                # テキストの高さに合わせて枠をリサイズ
-                actual_text_h = summary_clip.h
-                frame_path = images_dir / frame_name
-                if frame_path.exists():
-                    # 各ケースに最適化されたパディングを適用
-                    if is_shorts:
-                        m_frame = _load_frame_with_chromakey(frame_path, (text_w + 100, actual_text_h + frame_padding_h))
-                        all_clips.append(
-                            m_frame.with_position(("center", text_y_base - frame_offset_y))
-                            .with_duration(total_scene_duration)
-                            .with_start(cumulative_time)
+                if use_immersive and (not is_shorts):
+                    # Pillow 一体描画で枠内垂直中央（TextClip caption の下寄りを回避）
+                    ink = ink_color()
+                    fill_rgb: Tuple[int, int, int] = ink
+                    if formatted_lines:
+                        immersive_sign = _immersive_price_change_sign(formatted_lines)
+                        if immersive_sign == "+":
+                            fill_rgb = STUDIO_SOFT["soft_green"]  # type: ignore[assignment]
+                        elif immersive_sign == "-":
+                            fill_rgb = STUDIO_SOFT["soft_coral"]  # type: ignore[assignment]
+                    band_w_max = min((content_w or (size[0] - 2 * margin)) - 24, text_w + 40)
+                    summary_clip, band_w, band_h = _render_summary_band_clip(
+                        formatted_lines[:3],
+                        font_path=font_to_use if isinstance(font_to_use, str) else None,
+                        max_width=band_w_max,
+                        fill_rgb=fill_rgb,
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        font_size=font_size,
+                    )
+                    band_x = (content_x or margin) + max(0, ((content_w or main_area_w) - band_w) // 2)
+                    # 図解の直下（話しテロップとは別物の要約帯）
+                    if immersive_chart_bottom is not None:
+                        band_y = min(
+                            int(immersive_chart_bottom) + 10,
+                            size[1] - int(bottom_reserved_h or 168) - band_h - 12,
                         )
+                        band_y = max(int(top_reserved_h_for_scene or start_y) + 16, band_y)
                     else:
-                        m_frame = _load_frame_with_chromakey(frame_path, (text_w + 275, actual_text_h + frame_padding_h))
-                        # 各ケースに最適化されたオフセットで配置
-                        all_clips.append(
-                            m_frame.with_position((-100, text_y_base - frame_offset_y))
-                            .with_duration(total_scene_duration)
-                            .with_start(cumulative_time)
+                        band_y = max(
+                            (top_reserved_h_for_scene or start_y) + 28,
+                            size[1] - int(bottom_reserved_h or 168) - band_h - 12,
                         )
+                    summary_clip = summary_clip.with_position((band_x, band_y))
+                    actual_text_h = band_h
+                else:
+                    summary_clip = TextClip(
+                        text=summary_text,
+                        font=font_to_use,
+                        font_size=font_size,
+                        color=label_color,
+                        method="caption",
+                        size=(text_w, text_h_max),
+                        text_align="left",
+                    ).with_duration(total_scene_duration).with_start(cumulative_time)
+                    actual_text_h = summary_clip.h
+                    frame_path = images_dir / frame_name
+                    if frame_path.exists():
+                        if is_shorts:
+                            m_frame = _load_frame_with_chromakey(
+                                frame_path, (text_w + 100, actual_text_h + frame_padding_h)
+                            )
+                            all_clips.append(
+                                m_frame.with_position(("center", text_y_base - frame_offset_y))
+                                .with_duration(total_scene_duration)
+                                .with_start(cumulative_time)
+                            )
+                        else:
+                            m_frame = _load_frame_with_chromakey(
+                                frame_path, (text_w + 275, actual_text_h + frame_padding_h)
+                            )
+                            all_clips.append(
+                                m_frame.with_position((-100, text_y_base - frame_offset_y))
+                                .with_duration(total_scene_duration)
+                                .with_start(cumulative_time)
+                            )
 
-                # テキストの位置を調整
+                # テキストの位置を調整（immersive は上で配置済み）
                 if is_shorts:
                     summary_clip = summary_clip.with_position(("center", text_y_base))
                     shorts_text_bottom_y = (
                         (text_y_base - frame_offset_y) + actual_text_h + frame_padding_h
                     )
-                else:
+                elif not use_immersive:
                     base_pos = (0, text_y_base - text_offset_y)
                     summary_clip = summary_clip.with_position(base_pos)
                 if video_cross > 0:
@@ -1099,79 +2035,136 @@ def render_scenes_to_video(
             except Exception as e:
                 print(f"[WARN] 要約テキスト生成失敗: {e}")
 
-        # --- 4.5. immersive: ティッカー/社名カード（画像が無いニュースのフォールバック） ---
-        # OG画像に頼らず「何の話か」を明確にして番組感を出す
-        if (not is_shorts) and use_immersive and (not target_files):
-            ticker = sc.get("ticker") or sc.get("related_ticker") or ""
-            company = sc.get("company_name") or sc.get("related_company_name") or ""
-            # Ticker は英数中心なので cp932 事故が少ないが、念のため安全化
-            ticker = str(ticker).strip()
-            company = str(company).strip()
-            if ticker:
-                try:
-                    # タイトル枠と近すぎると詰まって見えるので、少し下げて余白を作る
-                    plate_x = margin + 26
-                    # タイトル枠の実サイズに追従して、常に下に余白を確保
-                    base_top = top_reserved_h_for_scene if top_reserved_h_for_scene is not None else start_y
-                    plate_y = max(start_y + 90, int(base_top) + 22)
-
-                    # Ticker（大きく）
-                    t_font = 92 if len(ticker) <= 6 else 82
-                    t_clip = TextClip(
-                        text=ticker[:10],
-                        font=font_to_use,
-                        font_size=t_font,
-                        color="#1A237E",
-                        method="label",
-                        # label下切れ対策（タイトルと同様）
-                        size=(None, int(t_font * 1.6)),
-                    ).with_duration(total_scene_duration).with_start(cumulative_time)
-
-                    # 会社名（Tickerの右に横並び）
-                    c_clip = None
-                    if company:
-                        c_clip = TextClip(
-                            text=(company[:27] + "…") if len(company) > 28 else company,
-                            font=font_to_use,
-                            font_size=50,
-                            color="#4A2711",
-                            method="label",
-                            # label下切れ対策
-                            size=(None, 80),
-                        ).with_duration(total_scene_duration).with_start(cumulative_time)
-
-                    pad_x = 22
-                    pad_y = 16
-                    gap_x = 40
-                    content_w = int(t_clip.w) + (gap_x + int(c_clip.w) if c_clip else 0)
-                    content_h = max(int(t_clip.h), int(c_clip.h) if c_clip else 0)
-
-                    plate_w = min(760, max(420, content_w + pad_x * 2))
-                    plate_h = max(104, content_h + pad_y * 2)
-
-                    plate = (
-                        _rounded_plate_clip((plate_w, plate_h), radius=28, color=(255, 255, 255), alpha=210)
-                        .with_position((plate_x, plate_y))
-                        .with_duration(total_scene_duration)
-                        .with_start(cumulative_time)
+        # immersive: チャート左・要約右（要約なしチャートは従来どおり下キャプションなし）
+        if (
+            (not is_shorts)
+            and use_immersive
+            and chart_caption_lines
+            and immersive_chart_bottom is not None
+        ):
+            try:
+                font_path_s = font_to_use if isinstance(font_to_use, str) else None
+                side_layout = immersive_chart_right is not None
+                if side_layout:
+                    gap = 14
+                    right_x = int(immersive_chart_right) + gap
+                    right_max = int((content_x or 0) + (content_w or size[0]) - 8)
+                    cap_w_max = max(300, right_max - right_x)
+                    cap_font_sz = 24
+                    wrap_font = _pil_font(font_path_s, cap_font_sz)
+                    wrap_px = max(140, cap_w_max - 44)
+                    wrapped: List[str] = []
+                    for src in chart_caption_lines[:4]:
+                        pages, _rest = _paginate_text_px(
+                            src, wrap_font, wrap_px, max_lines=2, ellipsis=False
+                        )
+                        if pages:
+                            wrapped.extend(ln for ln in pages[0] if str(ln).strip())
+                    if not wrapped:
+                        wrapped = chart_caption_lines[:4]
+                    tip_clip, tip_w, tip_h = _render_summary_band_clip(
+                        wrapped,
+                        font_path=font_path_s,
+                        max_width=cap_w_max,
+                        fill_rgb=ink_color(),
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        font_size=cap_font_sz,
+                        force_width=cap_w_max,
+                        pad_x=22,
+                        align="left",
                     )
+                    tip_x = right_x
+                    chart_h = int(immersive_chart_h or tip_h)
+                    tip_y = int(immersive_chart_top or 0) + max(0, (chart_h - tip_h) // 2)
+                    max_tip_y = size[1] - int(bottom_reserved_h or 140) - tip_h - 8
+                    tip_y = max(int(immersive_chart_top or 0), min(tip_y, max_tip_y))
+                else:
+                    cap_w_max = max(400, int(telop_w or (content_w or size[0] * 0.55)) - 8)
+                    tip_clip, tip_w, tip_h = _render_summary_band_clip(
+                        chart_caption_lines[:2],
+                        font_path=font_path_s,
+                        max_width=cap_w_max,
+                        fill_rgb=ink_color(),
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        font_size=36,
+                        force_width=None,
+                    )
+                    tip_x = (content_x or 0) + max(0, ((content_w or size[0]) - tip_w) // 2)
+                    tip_y = size[1] - int(bottom_reserved_h or 140) - tip_h - 12
+                tip_clip = tip_clip.with_position((tip_x, tip_y))
+                if video_cross > 0:
+                    tip_clip = tip_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
+                all_clips.append(tip_clip)
+            except Exception as e:
+                print(f"[WARN] chart caption failed: {e}")
+
+        # --- 4.5. immersive: チャート無しニュースの中央フォーカス（中身サイズ＋縦中央） ---
+        if (not is_shorts) and use_immersive and (not target_files):
+            ticker = str(sc.get("ticker") or sc.get("related_ticker") or "").strip()
+            company = str(sc.get("company_name") or sc.get("related_company_name") or "").strip()
+            focus_lines: List[str] = []
+            raw_ost = sc.get("on_screen_text") or []
+            if isinstance(raw_ost, str):
+                raw_ost = [raw_ost]
+            for t in raw_ost:
+                s = str(t).strip()
+                if s and not _is_spoken_filler_line(s):
+                    focus_lines.append(s)
+            # 文字中心は最低3行・最大5行まで厚くする（openingは4行以上）
+            sec = str(sc.get("section_title") or "")
+            is_opening = ("opening" in sec.lower()) or ("トピック" in sec)
+            focus_lines = _densify_on_screen_lines(
+                sc,
+                min_lines=3 if is_opening else 3,
+                max_lines=5,
+            )
+            if ticker or company or focus_lines:
+                try:
+                    base_top = (
+                        top_reserved_h_for_scene
+                        if top_reserved_h_for_scene is not None
+                        else start_y
+                    )
+                    plate_x = int(content_x or margin)
+                    plate_w = int(content_w or main_area_w)
+                    max_w = max(520, plate_w - 40)
+                    focus_clip, fw, fh = _render_news_focus_clip(
+                        ticker=ticker,
+                        company=company,
+                        lines=focus_lines,
+                        font_path=font_to_use if isinstance(font_to_use, str) else None,
+                        max_width=max_w,
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        min_height=0,
+                    )
+                    fx = plate_x + max(0, (plate_w - fw) // 2)
+                    # 画面中央寄り。密度高のときはキャラ／テロップ帯を避けて収める
+                    density = float(sc.get("_immersive_density") or 0.0)
+                    avail_top = int(base_top) + 16
+                    avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
+                    if density >= 0.9 and char_visible_h:
+                        avail_bot = min(avail_bot, size[1] - int(char_visible_h * 0.82) - 10)
+                    max_main_h = max(120, avail_bot - avail_top)
+                    if fh > max_main_h:
+                        # フォーカスカードは縮小（中身優先で高さ制限）
+                        focus_clip = focus_clip.resized(height=max_main_h)
+                        fw, fh = int(focus_clip.w), int(focus_clip.h)
+                        fx = plate_x + max(0, (plate_w - fw) // 2)
+                    band_mid = avail_top + max(0, (avail_bot - avail_top - fh) // 2)
+                    screen_mid = max(avail_top, size[1] // 2 - fh // 2 + 20)
+                    fy = int(0.35 * band_mid + 0.65 * screen_mid)
+                    fy = max(avail_top, min(fy, avail_bot - fh))
+                    focus_clip = focus_clip.with_position((fx, fy))
                     if video_cross > 0:
-                        plate = plate.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                    all_clips.append(plate)
-
-                    # ベースラインっぽく揃える（tickerの方が大きいので会社名は少しだけ下げる）
-                    tx = plate_x + pad_x
-                    ty = plate_y + (plate_h - int(t_clip.h)) // 2 - 30
-                    t_clip = t_clip.with_position((tx, ty))
-                    all_clips.append(t_clip)
-
-                    if c_clip:
-                        cx = tx + int(t_clip.w) + gap_x
-                        cy = plate_y + (plate_h - int(c_clip.h)) // 2 - 10
-                        c_clip = c_clip.with_position((cx, cy))
-                        all_clips.append(c_clip)
+                        focus_clip = focus_clip.with_effects(
+                            [FadeIn(video_cross), FadeOut(video_cross)]
+                        )
+                    all_clips.append(focus_clip)
                 except Exception as e:
-                    print(f"[WARN] ティッカーカード生成失敗: {e}")
+                    print(f"[WARN] ニュースフォーカスカード生成失敗: {e}")
 
         # --- 4.6. immersive: 強調ワード（旧: 左上に浮かせる表示） ---
         # 案Aでは「要約枠内に統合」するため、ここでの単独表示は行わない。
@@ -1179,6 +2172,7 @@ def render_scenes_to_video(
         # --- 5. キャラクターレイヤー（感情別画像 + セグメントタイミングでアニメ） ---
         if sc.get("section_title") != "subscribe":
             scene_emotion = normalize_emotion(sc.get("emotion"))
+            scene_speaker = primary_speaker_for_scene(sc) if sc.get("dialogue") or sc.get("speaker") else "minori"
             segments_for_char = sc.get("segments") or []
             if segments_for_char:
                 assign_segment_emotions(sc)
@@ -1198,14 +2192,16 @@ def render_scenes_to_video(
                         char_x = 30
                         char_y_placeholder = size[1] - int(size[1] * 0.25) - 170
                     beats = (
-                        merge_emotion_beats_for_scene(
-                            segments_for_char, scene_emotion, total_scene_duration
+                        merge_speaker_emotion_beats_for_scene(
+                            segments_for_char, scene_emotion, total_scene_duration, scene_speaker
                         )
                         if segments_for_char
-                        else [(0.0, total_scene_duration, scene_emotion)]
+                        else [(0.0, total_scene_duration, scene_emotion, scene_speaker)]
                     )
-                    for rel_start, beat_dur, beat_emotion in beats:
-                        beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=True)
+                    for rel_start, beat_dur, beat_emotion, beat_speaker in beats:
+                        beat_path = _asset_for_emotion(
+                            images_dir, beat_emotion, is_shorts=True, speaker=beat_speaker
+                        )
                         if not beat_path:
                             continue
                         
@@ -1264,62 +2260,163 @@ def render_scenes_to_video(
                             char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
                         all_clips.append(char_clip)
                 else:
-                    char_max_w = int(size[0] * 0.25)
-                    char_h = int(size[1] * 0.7)
-                    beats = (
-                        merge_emotion_beats_for_scene(
-                            segments_for_char, scene_emotion, total_scene_duration
+                    # immersive: 常時二人。下端接地。テロップはキャラ間に差し込む。
+                    # みのり=上半身アセット、カリン=全身アセット → 見え頭が揃うようズーム率を分ける。
+                    if use_immersive:
+                        density = float(sc.get("_immersive_density") or 0.0)
+                        # 密度高: キャラを少し小さくしてメイン被りを避ける
+                        vis_scale = 0.90 if density >= 1.0 else (0.95 if density >= 0.9 else 1.0)
+                        char_max_w = int(char_slot_w * vis_scale) if char_slot_w else int(size[0] * 0.13)
+                        visible_h = int((char_visible_h or int(size[1] * 0.32)) * vis_scale)
+                        for side_speaker, flip in (("minori", True), ("karin", False)):
+                            side_emotion = scene_emotion
+                            for seg in segments_for_char:
+                                if str(seg.get("speaker") or "").lower() == side_speaker:
+                                    side_emotion = normalize_emotion(
+                                        seg.get("emotion") or scene_emotion
+                                    )
+                                    break
+                            beat_path = _asset_for_emotion(
+                                images_dir, side_emotion, is_shorts=False, speaker=side_speaker
+                            )
+                            if not beat_path:
+                                continue
+                            # 全身アセットは強くズーム、上半身アセットは弱め
+                            body_keep = 0.34 if side_speaker == "karin" else 0.58
+                            full_h = int(visible_h / body_keep)
+                            # 内側（テロップ側）を切って、キャラは端に残す
+                            crop_from = "left" if side_speaker == "minori" else "right"
+                            char_clip = _load_char_with_chromakey(
+                                beat_path,
+                                height=full_h,
+                                flip_h=flip,
+                                keep_top=visible_h,
+                                max_width=char_max_w,
+                                crop_from=crop_from,
+                            )
+                            if int(char_clip.h) != visible_h:
+                                char_clip = char_clip.resized(height=visible_h)
+                            if side_speaker == "minori":
+                                char_x = 0
+                            else:
+                                char_x = size[0] - int(char_clip.w)
+                            char_y = size[1] - visible_h
+                            char_clip = (
+                                char_clip.with_duration(total_scene_duration)
+                                .with_start(cumulative_time)
+                                .with_position((char_x, char_y))
+                            )
+                            if video_cross > 0:
+                                char_clip = char_clip.with_effects(
+                                    [FadeIn(video_cross), FadeOut(video_cross)]
+                                )
+                            all_clips.append(char_clip)
+                    else:
+                        char_max_w = int(size[0] * 0.25)
+                        char_h = int(size[1] * 0.7)
+                        beats = (
+                            merge_speaker_emotion_beats_for_scene(
+                                segments_for_char, scene_emotion, total_scene_duration, scene_speaker
+                            )
+                            if segments_for_char
+                            else [(0.0, total_scene_duration, scene_emotion, scene_speaker)]
                         )
-                        if segments_for_char
-                        else [(0.0, total_scene_duration, scene_emotion)]
-                    )
-                    for rel_start, beat_dur, beat_emotion in beats:
-                        beat_path = _asset_for_emotion(images_dir, beat_emotion, is_shorts=False)
-                        if not beat_path:
-                            continue
-                        
-                        char_clip = _load_char_with_chromakey(beat_path, height=char_h)
-                        if char_clip.w > char_max_w:
-                            char_clip = char_clip.resized(width=char_max_w)
-                        
-                        char_x = size[0] - char_clip.w - 10
-                        char_y = size[1] - char_clip.h
-                        char_clip = char_clip.with_duration(beat_dur).with_start(cumulative_time + rel_start)
-                        char_clip = apply_emotion_motion(char_clip, beat_emotion, char_x, char_y)
-                        if video_cross > 0:
-                            char_clip = char_clip.with_effects([FadeIn(video_cross), FadeOut(video_cross)])
-                        all_clips.append(char_clip)
+                        for rel_start, beat_dur, beat_emotion, beat_speaker in beats:
+                            beat_path = _asset_for_emotion(
+                                images_dir, beat_emotion, is_shorts=False, speaker=beat_speaker
+                            )
+                            if not beat_path:
+                                continue
+                            char_clip = _load_char_with_chromakey(beat_path, height=char_h)
+                            if char_clip.w > char_max_w:
+                                char_clip = char_clip.resized(width=char_max_w)
+                            char_x = size[0] - char_clip.w - 10
+                            char_y = size[1] - char_clip.h
+                            char_clip = char_clip.with_duration(beat_dur).with_start(
+                                cumulative_time + rel_start
+                            )
+                            char_clip = apply_emotion_motion(char_clip, beat_emotion, char_x, char_y)
+                            if video_cross > 0:
+                                char_clip = char_clip.with_effects(
+                                    [FadeIn(video_cross), FadeOut(video_cross)]
+                                )
+                            all_clips.append(char_clip)
             except Exception as e:
-                print(f"⚠️ キャラクター表示失敗: {e}")
+                print(f"[WARN] character layer failed: {e}")
 
-        # --- 6. 字幕レイヤー (telop_frame.png 背面) ---
+        # --- 6. 字幕レイヤー (Studio Soft telop / 従来 telop_frame) ---
         segments = sc.get("segments", [])
         # ショートまたは show_subtitles=False では字幕（segments）を表示しない
         if (not is_shorts) and show_subtitles and segments and sc.get("section_title") != "subscribe":
-            frame_path = images_dir / "telop_frame.png"
-            # 横型（既存）
-            if frame_path.exists():
-                # 横幅を画面幅に近く(1920に対して1900)、縦幅を動画下端に寄せる
+            soft_telop = images_dir / "studio_soft_telop.png"
+            use_soft_telop = bool(use_immersive and soft_telop.exists())
+            frame_path = soft_telop if use_soft_telop else (images_dir / "telop_frame.png")
+            telop_y_bottom = size[1] - 156
+            telop_h_full = 150
+            if (not use_immersive) and frame_path.exists():
                 telop_w_full = 2200
                 telop_h_full = 550
-                telop_y_bottom = size[1] - telop_h_full + 180 # 下端に寄せる
+                telop_y_bottom = size[1] - telop_h_full + 180
                 telop_frame = _load_frame_with_chromakey(frame_path, (telop_w_full, telop_h_full))
-                all_clips.append(telop_frame.with_position(("center", telop_y_bottom)).with_duration(total_scene_duration).with_start(cumulative_time))
+                all_clips.append(
+                    telop_frame.with_position(("center", telop_y_bottom))
+                    .with_duration(total_scene_duration)
+                    .with_start(cumulative_time)
+                )
 
             for seg in segments:
-                seg_text = seg.get("text", "")
+                seg_text = str(seg.get("text", "") or "").strip()
+                if not seg_text:
+                    continue
                 seg_dur = float(seg.get("duration", 0.5))
                 seg_start_in_total = cumulative_time + float(seg.get("start", 0.0))
-                
                 try:
-                    txt_clip = TextClip(
-                        text=seg_text, font=font_to_use, font_size=48,
-                        color="white", stroke_color="black", stroke_width=1.5,
-                        method="caption", size=(1700, 160), text_align="center"
-                    ).with_duration(seg_dur).with_start(seg_start_in_total).with_position(("center", size[1] - 195))
-                    all_clips.append(txt_clip)
+                    if use_immersive:
+                        sp = str(seg.get("speaker") or sc.get("speaker") or "minori")
+                        fill_rgb = speaker_subtitle_color(sp)
+                        corridor_x, corridor_w = (
+                            (telop_x, telop_w)
+                            if telop_w
+                            else immersive_telop_box(size)
+                        )
+                        cap_font = _caption_font_size(size[1])
+                        wrap_font = _pil_font(
+                            font_to_use if isinstance(font_to_use, str) else None,
+                            cap_font,
+                        )
+                        text_max_px = max(80, int(corridor_w) - 80)
+                        pages, _rest = _paginate_text_px(
+                            seg_text,
+                            wrap_font,
+                            text_max_px,
+                            max_lines=2,
+                            ellipsis=False,
+                        )
+                        n_pages = max(1, len(pages))
+                        page_dur = seg_dur / n_pages
+                        for i, page_lines in enumerate(pages):
+                            cap_clip, cap_w, cap_h = _render_caption_band_clip(
+                                "",
+                                font_path=font_to_use if isinstance(font_to_use, str) else None,
+                                max_width=max(360, corridor_w),
+                                fill_rgb=fill_rgb,
+                                duration=page_dur,
+                                start=seg_start_in_total + i * page_dur,
+                                font_size=cap_font,
+                                lines=page_lines,
+                            )
+                            ty = size[1] - cap_h - 10
+                            tx = corridor_x + max(0, (corridor_w - cap_w) // 2)
+                            all_clips.append(cap_clip.with_position((tx, ty)))
+                    else:
+                        txt_clip = TextClip(
+                            text=seg_text, font=font_to_use, font_size=48,
+                            color="white", stroke_color="black", stroke_width=1.5,
+                            method="caption", size=(1700, 160), text_align="center"
+                        ).with_duration(seg_dur).with_start(seg_start_in_total).with_position(("center", size[1] - 195))
+                        all_clips.append(txt_clip)
                 except Exception as e:
-                    print(f"⚠️ 字幕生成失敗: {e}")
+                    print(f"[WARN] subtitle failed: {e}")
 
         # --- 7. チャンネル登録アニメーション (subscribeセクションのみ) ---
         if sc.get("section_title") == "subscribe":
