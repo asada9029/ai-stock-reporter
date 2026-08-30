@@ -14,7 +14,10 @@ class YouTubeUploader:
         self.youtube = self._get_authenticated_service()
 
     def _get_authenticated_service(self):
-        scopes = ['https://www.googleapis.com/auth/youtube.upload']
+        scopes = [
+            'https://www.googleapis.com/auth/youtube.upload',
+            'https://www.googleapis.com/auth/youtube'
+        ]
         
         # GitHub Secrets から復元されたファイルを優先的に探す
         token_path = Path('src/config/token.json')
@@ -99,12 +102,23 @@ class YouTubeUploader:
 
         # サムネイルのアップロード
         if thumbnail_path and os.path.exists(thumbnail_path):
+            import time
+            print(f"⌛ 動画処理の反映を待機中（5秒）...")
+            time.sleep(5)
+            
             print(f"🖼️ サムネイルをアップロード中: {thumbnail_path}")
-            self.youtube.thumbnails().set(
-                videoId=video_id,
-                media_body=MediaFileUpload(thumbnail_path)
-            ).execute()
-            print("✅ サムネイルアップロード完了")
+            try:
+                # 拡張子からMIMEタイプを判定
+                ext = Path(thumbnail_path).suffix.lower()
+                mimetype = 'image/png' if ext == '.png' else 'image/jpeg'
+                
+                self.youtube.thumbnails().set(
+                    videoId=video_id,
+                    media_body=MediaFileUpload(thumbnail_path, mimetype=mimetype)
+                ).execute()
+                print("✅ サムネイルアップロード完了")
+            except Exception as e:
+                print(f"⚠️ サムネイルのアップロードに失敗しました（動画公開自体は成功しています）: {e}")
 
         return video_id
 

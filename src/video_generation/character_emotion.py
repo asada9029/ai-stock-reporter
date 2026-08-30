@@ -413,3 +413,53 @@ def merge_emotion_beats_for_scene(
         else:
             merged_out.append((start, dur, em))
     return merged_out
+
+
+def merge_speaker_emotion_beats_for_scene(
+    segments: List[Dict],
+    default_emotion: str,
+    total_scene_duration: float,
+    default_speaker: str = "minori",
+) -> List[Tuple[float, float, str, str]]:
+    """
+    (相対開始秒, 尺, emotion, speaker) 。
+    話者または感情が変わったら区切る。掛け合いで立ち絵・声を同期するため。
+    """
+    if not segments:
+        return [(0.0, max(0.05, total_scene_duration), default_emotion, default_speaker)]
+
+    raw: List[Tuple[float, float, str, str]] = []
+    for seg in segments:
+        start = float(seg.get("start", 0.0))
+        dur = float(seg.get("duration", 0.0))
+        if dur <= 0:
+            continue
+        em = normalize_emotion(seg.get("emotion"), default_emotion)
+        sp = str(seg.get("speaker") or default_speaker).strip().lower() or default_speaker
+        if sp not in ("minori", "karin"):
+            sp = default_speaker
+        raw.append((start, dur, em, sp))
+
+    if not raw:
+        return [(0.0, max(0.05, total_scene_duration), default_emotion, default_speaker)]
+
+    out: List[Tuple[float, float, str, str]] = []
+    cursor = 0.0
+    for start, dur, em, sp in raw:
+        if start > cursor + 0.02:
+            out.append((cursor, start - cursor, default_emotion, default_speaker))
+        out.append((start, dur, em, sp))
+        cursor = start + dur
+
+    if cursor < total_scene_duration - 0.02:
+        _, _, last_em, last_sp = raw[-1]
+        out.append((cursor, total_scene_duration - cursor, last_em, last_sp))
+
+    merged: List[Tuple[float, float, str, str]] = []
+    for start, dur, em, sp in out:
+        if merged and merged[-1][2] == em and merged[-1][3] == sp:
+            ps, pd, _, _ = merged[-1]
+            merged[-1] = (ps, pd + dur, em, sp)
+        else:
+            merged.append((start, dur, em, sp))
+    return merged

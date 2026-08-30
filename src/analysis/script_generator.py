@@ -26,6 +26,15 @@ from src.analysis.script_quality import (
 )
 
 
+def _load_characters_config() -> Dict:
+    path = Path(__file__).resolve().parent.parent / "config" / "characters.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 class ScriptGenerator:
     """台本生成クラス"""
     
@@ -48,10 +57,42 @@ class ScriptGenerator:
             # model_name=GeminiClient.MODEL_TEST,
             enable_search=False  # 台本生成では検索不要
         )
-        
-        script_chain = " → ".join(GeminiClient.script_models())
-        print(f"[OK] ScriptGenerator 初期化完了（台本モデル: {script_chain}）")
+        self.characters = _load_characters_config()
 
+    def _character_prompt_block(self) -> str:
+        minori = self.characters.get("minori") or {}
+        karin = self.characters.get("karin") or {}
+        return f"""
+# キャラクター設定（番組の顔）
+- 株野みのり（ホスト / speaker=`minori`）: {minori.get('speaking_style') or '敬語。やさしいが芯が硬い。'}
+- 相場カリン（パートナー / speaker=`karin`）: {karin.get('speaking_style') or 'タメ口寄りの後輩。旬に飛びつく。'}
+※「やさしいのにちょっと尖ってる」トーン。まじめニュース番組にしない。ほのぼのたとえを適宜入れる。
+
+# 二人掛け合い（重要）
+- 通常の解説シーンは `speaker: "minori"` の一人語りでよい。
+- **opening（フック）・旬ニュース（slot=heat）・closing（締め）** では掛け合いを入れる。
+- 掛け合いシーンは `dialogue` 配列を必ず付ける:
+  `[{{"speaker":"minori","text":"...","speech_text":"..."}},{{"speaker":"karin","text":"...","speech_text":"..."}}]`
+- `text` / `speech_text` は dialogue を連結した全文でもよい（字幕用）。話者切替は dialogue が正。
+- 全編二人にはしない。情報ブロックはみのり主導、感情ブロックだけカリンを出す。
+"""
+
+    def _news_story_prompt_block(self) -> str:
+        return """
+# ニュース物語の組み立て（重要）
+- `attention_news` の各要素には `slot`（honmei/heat/rotation/support）と `scores`、あれば `lane` / `scope` / `polarity` がある。
+- **lane**: `macro`=大局（地合いの主語）、`local`=局所（個別・旬）。honmei は macro 寄り、heat は local 寄り。
+- **scope**: `issuer`=当事者1社 → 関連チャート／言及はその1社だけ（同業に広げない）。`theme`=テーマ全体。`unclear`=広げない。
+- 1本ずつ並列で終わらせない。流れは「束ねて紹介 → まとめて影響の読み → 明日の立ち回り」。
+- slot=honmei は本命としてやや厚め。slot=heat は旬・感情を厚めに。slot=rotation は資金の行き先・違和感として扱う。
+- 同じ話題の重複解説は禁止。
+- 【図解優先】次のパスがある場合は該当シーンの `target_files` に必ず指定し、文字の羅列より図を見せる。on_screen_text は図の補足を最大2行。
+  - `diagrams.news_bundle_path`（ニュース束の導入）
+  - `diagrams.impact_flow_path`（影響の読み）
+  - `diagrams.market_board_path`（指数/地合いの導入）
+  - `diagrams.capital_flow_path`（資金の行き先・セクター概要）
+  - `diagrams.checklist_path`（チェック3点。展望セクションで使用）
+"""
     @staticmethod
     def _immersive_prompt_appendix(analysis_data: Dict) -> str:
         """classic プロンプトの on_screen / opening 指示を上書きする追記ブロック。"""
@@ -60,27 +101,30 @@ class ScriptGenerator:
 
 # 【immersive 演出モード：以下で on_screen_text / opening の指示をすべて上書き】
 - 視聴者は「読む」より「聞く」ことを優先します。詳しい説明は speech_text（読み上げ）に書き、画面は補助ラベルに留めてください。
-- on_screen_text は「■」「└」形式は禁止。1シーンあたり **必ず2行**（最大3行）。**1行のみは禁止**（opening の3行ラベルは除く）。
+- on_screen_text は「■」「└」形式は禁止。図解シーンは最大2行の補足。**ニュース／文字中心シーンは3〜5行**で密度を確保（1行のみは禁止）。
   - 1行目: 事実・数値・見出し（例: "S&P500 +0.3%", "日経 3万8500円台"）
-  - 2行目: 見解・影響・注意点（例: "金利上昇がハイテクに重石", "円安で輸出株に追い風"）
-- 各行は短めだが情報は2行で足す（目安：1行あたり全角18〜22文字以内。composer側で20文字で折り返し）。
-- 良い例（2行セット）: ["S&P500 +0.3%", "小幅続伸も上値は重い"] / ["半導体 +4.2%", "AI需要で牽引"]
+  - 2行目以降: 見解・影響・注意点・関連チェック（例: "金利上昇がハイテクに重石", "円安で輸出株に追い風"）
+- 各行は短め（目安：1行あたり全角18〜22文字以内）。
+- 良い例（ニュース）: ["決算後に急落", "見通し下方修正", "小売セクター波及に注意", "寄り付き反応を確認"]
 - 悪い例: 1行だけ、音声の長文をそのまま載せる、箇条書き8行。
 - 【opening 上書き】:
     - 挨拶の直後、20〜40秒以内に「今日の米国市場の結論（一言）」と「最大の材料は何か」を speech_text で言い切ること。
     - その直後に「ではまず指数（または市場全体）から確認して、次にニュースを深掘りします」のように自然に次へ繋げてください。
-    - opening の on_screen_text は最大3行。メニュー箇条書き8行は禁止。例:
-        "米国: 小幅安"
-        "注目: {thumb[:14]}..."
-        "日本: 影響は○"
+    - opening の on_screen_text は **4〜5行**（寂しい3行だけは避ける）。メニュー8行は禁止。例:
+        "米国株: AI決算でハイテク主導高"
+        "注目: {thumb[:16]}"
+        "関連: エヌビディア／セールスフォース急伸"
+        "日本株: 半導体・ソフト関連に波及注目"
+        "チェック: 寄り付きの選別反応"
     - opening はシーン分割なしの1シーンでOK。
-- 【シーン分割】1画面＝1メッセージ。情報が多いときはシーンを増やし、1シーンの on_screen_text を3行以内に保つ。
+- 【シーン分割】1画面＝1メッセージ。図解シーンの補足は2行以内。**文字中心／ニュースは3〜5行**を維持し、それ以上ならシーン分割。
 - speech_text / text / 数値の正確さ・読み上げカタカナ・初心者向けの深掘りは、classic と同じ基準を維持してください。
 
 - 【注目ニュースの画面（重要）】OG画像は必須ではありません（内容とズレることがあるため）。ニュースの「何の話か」を画面で必ず明確にしてください。
   - 関連銘柄がある場合は、`related_ticker` / `related_company_name` を必ず設定してください（可能なら target_files に関連チャート）。
   - 関連銘柄チャートが無い場合でも、target_files を無理に埋めず、`related_ticker` / `related_company_name` を設定してティッカー/社名カードが出せるようにしてください。
   - 追加キー（任意）: `ticker`, `company_name`（関連銘柄と同じでOK）
+- 【チェックリスト図】`diagrams.checklist_path` がある場合、japan_impact_prediction / tomorrow_strategy で `target_files` に指定して画面を厚くする。
 """
 
     def generate_structured_scenes(
@@ -189,10 +233,12 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         elif is_morning:
             # 朝動画専用プロンプト（ニュース、セクター、日本波及を重視）
             prompt = f"""
-あなたは株ニュース解説キャラクター「株野（かぶの）みのり」の動画ディレクター兼台本作家です。
-「株野みのり」は、優しいお姉さんキャラであり、敬語を使って話します。
+あなたは株ニュース解説番組「マイカブ」の動画ディレクター兼台本作家です。
+ホストは「株野（かぶの）みのり」。パートナーは「相場カリン」。掛け合いは opening / 旬ニュース / closing で使う。
 「初心者でも投資が楽しく、わかりやすくなる」をコンセプトに、情報密度の高い動画シーン配列をJSON形式の配列で出力してください。
 昨晩の米国市場の動向を受け、今日の日本市場がどう動くかに焦点を当てます。
+{self._character_prompt_block()}
+{self._news_story_prompt_block()}
 
 # 動画構成案
 {json.dumps(video_structure, ensure_ascii=False, indent=2)}
@@ -214,7 +260,7 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 # 分析データの構造定義（辞書形式）
 - `market_indices`: 主要指数の辞書。キーは "DOW", "NASDAQ", "S&P500"。
     - 各要素: `name` (名称), `current_price` (終値), `change_percent` (前日比%), `chart_image_path` (チャート画像パス)
-- `attention_news`: 市場全体の重要ニュースのリスト。各要素に `title`, `snippet`, `visual_image_path`（OG画像 or 関連銘柄チャート）, `visual_source` ("og"|"chart"), `related_ticker`, `related_company_name` があります。
+- `attention_news`: 市場全体の重要ニュースのリスト。各要素に `title`, `snippet`, `slot` (honmei/heat/rotation/support), `scores`, 任意で `lane` / `scope` / `polarity`, `visual_image_path`（OG画像 or 関連銘柄チャート）, `visual_source` ("og"|"chart"), `related_ticker`, `related_company_name` があります。
 - `sector_analysis`: 注目セクターデータ。
     - `rankings_screenshot`: 米国業種ランキング表の画像パス。
     - `sectors`: セクターごとの詳細リスト。各要素に `sector_name` (セクター名), `type` (top/bottom), `change` (騰落率), `news` (そのセクターの最新ニュースリスト) があります。
@@ -224,8 +270,8 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 
 # セクション別詳細指示
 1. 【opening】: 
-    - 挨拶の直後、必ず「まずは市場指数の解説を行い、その次に（サムネイルにある具体的なニュースタイトル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）を詳しく解説します」という旨を伝えてください。
-    - 続けて、後半のメニュー（米国セクター分析、日本市場への影響予測）を網羅していることを伝え、最後まで見るメリットを強調してください。
+    - 挨拶の直後、今日の一言結論か違和感（例: 資金の行き先）を短く示し、続けて「まずは市場指数、その次に（サムネイル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）」と案内する。
+    - 後半メニュー（米国セクター分析、日本市場への影響予測）も触れる。
     - 【重要：on_screen_textの指示】: 以下を1行ずつ箇条書きで表示してください。
         "・米国市場の動向"
         "・米国注目ニュース：{analysis_data.get('selected_thumbnail_title', '本日のトピック')[:12]}..."
@@ -233,17 +279,21 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         "・日本市場への影響予測"
         "・まとめ"
     - また、このセクションだけシーン分割はなしでお願いします。
-2. 【us_market_summary】: S&P500、ナスダック(NASDAQ)、ダウ(DOW)をそれぞれ独立したシーンに分ける。、各指数の `chart_image_path` を見せながら、終値(current_price)、前日比(change_percent)、変動原因を分析。
-3. 【us_news_highlights】: **重要：以下の順番でニュースを紹介してください。**
-    ※ `attention_news` はサムネイル優先で **既に並べ替え済み**。**index 0 = メインニュース** を必ず最初に最も詳しく解説。
-    1. `attention_news[0]` を最初に詳しく解説。
-    2. 次にハイライトニュース（並べ替え後 index 1,2,3... 付近）を順に紹介。
-    3. その後、`attention_news` から**上記（1, 2）以外の**重要なものを数件ピックアップ。
-    それぞれ独立したシーン、または分割したシーンで紹介・分析してください。**重要：サムネイルやハイライトで選んだニュースを二重に紹介しないよう、インデックスを厳格にチェックしてください。**
-    - **【ニュース画像】**: `attention_news[i].visual_image_path` が「関連銘柄チャート」などで信頼できる場合のみ `target_files` に指定してください。OG画像は内容とズレることがあるため、無理に使う必要はありません。画像が無い場合は、`related_ticker` / `related_company_name` を設定し、画面のティッカー/社名カードで補ってください。
-4. 【us_sector_analysis】: `sector_analysis -> rankings_screenshot` を表示しながら、上昇・下落が顕著だったセクター(`sector_analysis -> sectors`)を紹介した後、シーンを切り替え、挙げたセクターの最新ニュース(`sector_analysis -> sectors -> news`)を`on_screen_text`で表示し、騰落原因を分析。理由が不明な場合は市場心理（利益確定、材料待ち等）を推測。
-5. 【japan_impact_prediction】: `jp_tomorrow_outlook` 内のニュースを具体的に参照し、米国の動きが日本にどう影響するか。注目日本株の予測（例：NVIDIA高→東エレク）、為替の影響。
-6. 【closing】: 今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「夜18時のイブニングレポートもお楽しみに！」といった言葉で締めてください。
+2. 【us_market_summary】: 可能なら先に `diagrams.market_board_path` を見せて地合いを一目で示し、その後 S&P500、ナスダック(NASDAQ)、ダウ(DOW)をそれぞれ独立したシーンに分ける。各指数の `chart_image_path` を見せながら、終値(current_price)、前日比(change_percent)、変動原因を分析。
+3. 【us_news_highlights】: **束ねて紹介 → 影響の読み** の流れで。
+    ※ `attention_news` は選定済み。slot / lane / scope を尊重。
+    1. まず `diagrams.news_bundle_path` があればそれを全画面で見せ、slot=honmei と主な heat を短く束ねて紹介。
+    2. 続けて `diagrams.impact_flow_path` を見せ、「これらの材料が市場・セクターにどう効くか」を1〜2シーンでまとめて予測。
+    3. rotation / `diagrams.capital_flow_path` があれば資金の行き先・違和感として触れる。
+    - heat 枠のシーンはカリンとの掛け合い（dialogue）を推奨。
+    - `scope=issuer` は関連チャート・言及をその1社だけ（同業に広げない）。`lane=macro` に無理な個別ティッカーカードを付けない。
+    - **【ニュース画像】**: 図解を優先。個別 `visual_image_path` は補助。OGは無理に使わない。
+4. 【us_sector_analysis】: `diagrams.capital_flow_path` があれば先に見せ、続けて `sector_analysis -> rankings_screenshot` を表示しながら、上昇・下落が顕著だったセクター(`sector_analysis -> sectors`)を紹介した後、シーンを切り替え、挙げたセクターの最新ニュース(`sector_analysis -> sectors -> news`)を`on_screen_text`で表示し、騰落原因を分析。理由が不明な場合は市場心理（利益確定、材料待ち等）を推測。
+5. 【japan_impact_prediction】: `jp_tomorrow_outlook` と直前のニュース束を踏まえ、米国→日本の影響を予測。最後に「今日見るべきチェック3点」で締める。`diagrams.checklist_path` があれば `target_files` に指定。注目日本株の予測（例：NVIDIA高→東エレク）、為替の影響。
+6. 【closing】: 掛け合いで締め。今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「夜18時のイブニングレポートもお楽しみに！」といった言葉で締めてください。
+
+# 分析データの追加キー
+- `diagrams.news_bundle_path` / `impact_flow_path` / `market_board_path` / `capital_flow_path` / `checklist_path`: 図解PNG。あるときは該当セクションで必ず使う。
 
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:
@@ -263,6 +313,8 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 - two_image_layout: 文字列（画像が2枚の場合のみ有効。"horizontal"（左右並列）または "vertical"（上下並列）。デフォルトは "horizontal"）
 - bg_name: 背景画像名（基本は "bg_illust.png"）
 - target_files: 画像パスの配列（分析データ内にある有効なファイルパスを正確に指定。1枚でも配列形式 ["path"] で出力）
+- speaker: 文字列（`"minori"` または `"karin"`。一人語り時）
+- dialogue: 任意。掛け合い時は配列。各要素に speaker / text / speech_text
 
 # 台本作成の鉄則（コンセプト：徹底的な初心者目線＆ロジカル）
     1. 【徹底的な初心者目線】：専門用語（例：流動性、円安メリット、窓開け）の解説にとどまらず、「それが私たちの生活や投資にどう影響するのか」を中学生でもわかるレベルで噛み砕いてください。単なる用語補完ではなく、背景にあるストーリーを重視してください。
@@ -284,7 +336,7 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         - 例: 前半好調・後半注意 → `[{{"segment_index":0,"emotion":"happy"}},{{"segment_index":2,"emotion":"confident"}}]`
         - 代替: `segment_emotions` 配列でも可。
     9. 【行動指針の提示】：最後に「今日はまず〇〇をチェックしましょう」など、視聴者が次に取るべきアクションを具体的に指示してください。
-    10. 【データ不足時の対応】：対応するデータがない場合、データがない旨を伝える。
+    10. 【データ不足時の対応】：対応データが空なら、その旨を長々と説明せず、該当シーンを作らず次セクションへ進む（無言スキップ）。`attention_news` が空の場合のみ「ニュースが取得できませんでした」と述べる。
     11. 【自然な文章構成】：読み上げが不自然に細切れにならないよう、一文一文を適切な長さ（40〜80文字程度）に保ち、意味の区切りで自然に読めるように構成してください。
 
 出力は純粋なJSON配列のみを返してください。
@@ -292,9 +344,11 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         else:
             # 既存の夜動画用プロンプトを完全に復元
             prompt = f"""
-あなたは株ニュース解説キャラクター「株野（かぶの）みのり」の動画ディレクター兼台本作家です。
-「株野みのり」は、優しいお姉さんキャラであり、敬語を使って話します。
+あなたは株ニュース解説番組「マイカブ」の動画ディレクター兼台本作家です。
+ホストは「株野（かぶの）みのり」。パートナーは「相場カリン」。掛け合いは opening / 旬ニュース / closing で使う。
 「初心者でも投資が楽しく、わかりやすくなる」をコンセプトに、情報密度の高い動画シーン配列をJSON形式の配列で出力してください。
+{self._character_prompt_block()}
+{self._news_story_prompt_block()}
 
 # 動画構成案
 {json.dumps(video_structure, ensure_ascii=False, indent=2)}
@@ -306,7 +360,7 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 {duration_rule}
 {section_weight_rule}
 - 【シーン分割の徹底】: 1シーンに情報を詰め込みすぎないでください。画像（target_files）やテキスト（on_screen_text）が画面内に収まりきらない、あるいは視聴者が理解しにくいと判断した場合は、必ずシーンを分割してください。特に、画像（target_files）があるシーンでは、on_screen_text（画面表示用テキスト）は最大4行（2セット）までとし、それ以上の情報を伝えたい場合は必ずシーンを分割してください（画像がないシーンでは4行を超えても構いません）。
-- 【タイトルの形式】：opening以外の各シーンのタイトルは必ず、「セクション名：具体的な内容」という形式にする。openingは「本日のトピック」というタイトルでお願いします。他のシーンのセクション名ですが、market_indiciesなら市場指数, news_highlightsなら注目ニュース, event_calenderなら決算・株主総会スケジュール, sector_overviewならセクター概要, sector_attentionなら[セクター名]注目銘柄, prev_ir_attentionなら前回紹介銘柄の動向, tomorrow_strategyなら今夜の米国市場と明日の展望, closingならまとめでお願いします。ただし、シーン分割をした場合、セクション名を分割してもOKです。例えば「今夜の米国市場」と「明日の展望」で分けるみたいな感じです。
+- 【タイトルの形式】：opening以外の各シーンのタイトルは必ず、「セクション名：具体的な内容」という形式にする。openingは「本日のトピック」というタイトルでお願いします。他のシーンのセクション名ですが、market_indiciesなら市場指数, news_highlightsなら注目ニュース, event_calenderなら注目決算スケジュール, sector_overviewならセクター概要, sector_attentionなら[セクター名]注目銘柄, prev_ir_attentionなら前回紹介銘柄の動向, tomorrow_strategyなら今夜の米国市場と明日の展望, closingならまとめでお願いします。ただし、シーン分割をした場合、セクション名を分割してもOKです。例えば「今夜の米国市場」と「明日の展望」で分けるみたいな感じです。
 - 【セクションの順番】：なるべく動画構成案通り（opening→market_indices→news_highlights→event_calender→sector_overview→sector_attention→prev_ir_tracking→tomorrow_strategy→closing）にしてください。
 - 【画像レイアウト】: 画像が2枚以上の場合は、必ず左右並列（horizontal）にしてください。上下並列（vertical）は使用禁止です。
 - 【画像とテキストの併用】: 画像とテキストを同時に表示する場合、画像がメイン、テキストが補足となります。
@@ -314,16 +368,15 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 - 【専門用語の解説】: 専門用語は初心者にもわかるように簡潔に解説してください。
 
 # 分析データの構造定義（辞書形式）
-- `market_indices`: 主要指数の辞書。キーは "NIKKEI", "SP500"。
+- `market_indices`: 主要指数の辞書。キーは "NIKKEI", "SP500", "USDJPY"。
     - 各要素: `name` (名称), `current_price` (終値), `change_percent` (前日比%), `chart_image_path` (チャート画像パス)
-- `attention_news`: 市場全体の重要ニュースのリスト。各要素に `title`, `snippet`, `visual_image_path`, `visual_source` ("og"|"chart"), `related_ticker`, `related_company_name` があります。
+- `attention_news`: 市場全体の重要ニュースのリスト。各要素に `title`, `snippet`, `slot` (honmei/heat/rotation/support), `scores`, 任意で `lane` (macro/local), `scope` (issuer/theme/unclear), `polarity`, `visual_image_path`, `visual_source` ("og"|"chart"), `related_ticker`, `related_company_name` があります。
 - `sector_analysis`: 注目セクターと個別銘柄の統合データ。
     - `rankings_screenshot`: 33業種ランキング表の画像パス。
-    - `sectors`: セクターごとの詳細リスト。各要素に `sector_name` (セクター名), `type` (top/bottom), `change` (騰落率), `companies` (そのセクターの主要銘柄リスト) があります。
+    - `sectors`: セクターごとの詳細リスト。各要素に `sector_name` (セクター名), `type` (top/bottom), `change` (騰落率), `companies` (主要銘柄・少なめ) があります。
     - `companies` の各要素: `company_name` (社名), `news` (銘柄ニュース), `chart_image_path` (個別チャート画像パス)
-- `kessan_schedule` / `soukai_schedule`: 決算と総会の予定。
-    - `image_path`: スケジュール一覧表の画像パス
-    - `data`: 予定の詳細リスト。空の場合は予定がないことを意味します。
+- `kessan_schedule`: 注目決算のみ。`image_path` / `image_paths`（最大2ページ）と `data`。空ならセクション自体を作らない。
+- `soukai_schedule`: 使わない（株主総会は扱わない）。
 - `prev_ir_analysis`: 前回紹介銘柄の追跡結果リスト。
     - 各要素: `company_name` (社名), `change_percent` (騰落率), `recent_news` (直近ニュースリスト), `reason_summary` (変動理由の要約), `chart_image_path` (チャート画像パス)
 - `us_tonight_outlook`: 今夜の米国市場の見通しニュースリスト。`attention_news` と同様に `visual_image_path` 等を含む場合があります。
@@ -331,32 +384,36 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 
 # セクション別詳細指示
 1. 【opening】: 
-    - 挨拶の直後、必ず「まずは市場指数の解説を行い、その次に（サムネイルにある具体的なニュースタイトル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）を詳しく解説します」という旨を伝えてください。
-    - 続けて、後半のメニュー（決算、セクター分析、注目銘柄、展望）を網羅していることを伝え、最後まで見るメリットを強調してください。
+    - 挨拶の直後、今日の一言結論か違和感を短く示し、「まずは市場指数、その次に（サムネイル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）」と案内。
+    - 続けて後半メニューも触れる。
     - 【重要：on_screen_textの指示】: 以下を1行ずつ箇条書きで表示してください。
         "・市場の動向"
         "・注目ニュース：{analysis_data.get('selected_thumbnail_title', '本日のトピック')[:12]}..."
-        "・決算・株主総会スケジュール"
+        "・注目決算スケジュール"
         "・セクター分析"
         "・注目銘柄のIR"
         "・前回紹介銘柄の動向"
         "・今夜の米国市場と明日の展望"
         "・まとめ"
     - また、このセクションだけシーン分割はなしでお願いします。
-2. 【market_indices】: 日経平均(NIKKEI)、S&P500(SP500)をそれぞれ独立したシーンに分ける。必ず日経平均から先に紹介すること。各指数の `chart_image_path` を見せながら、終値(current_price)、前日比(change_percent)、変動原因を分析。最後にドル円(USDJPY)の動きとその影響を説明するシーンを追加。
-3. 【news_highlights】: **重要：以下の順番でニュースを紹介してください。**
-    ※ `attention_news` はサムネイル優先で **既に並べ替え済み** です。**index 0 = サムネイルのメインニュース** として必ず最初のシーンで最も詳しく解説してください。
-    1. `attention_news[0]`（メイン）を最初に、最も詳しく解説してください。
-    2. 次に、ハイライトニュース（元の index {analysis_data.get('highlight_indices', [])} に相当する記事。並べ替え後は index 1,2,3... 付近）を順に紹介してください。
-    3. その後、`attention_news` から**上記（1, 2）以外の**重要なものを数件ピックアップ。
-    それぞれ独立したシーン、または分割したシーンでさらっと紹介・分析。**重要：サムネイルやハイライトで選んだニュースを二重に紹介しないよう、インデックスを厳格にチェックしてください。**
-    - **【ニュース画像】**: `attention_news[i].visual_image_path` が「関連銘柄チャート」などで信頼できる場合のみ `target_files` に指定してください。OG画像は内容とズレることがあるため、無理に使う必要はありません。画像が無い場合でも、`related_ticker` / `related_company_name` を設定し、画面のティッカー/社名カードで補ってください。
-4. 【event_calendar】: 決算(`kessan_schedule`)と株主総会(`soukai_schedule`)をそれぞれ独立したシーンに分け、それぞれの `image_path` を必ず添付。データがなければ「予定なし」と伝える。
-5. 【sector_overview】: `sector_analysis -> rankings_screenshot` を表示。上昇・下落が顕著だったセクターをそれぞれ3つ具体的に挙げる。
-6. 【sector_attention】: `sector_analysis -> sectors` のデータを使用。セクターごとにシーンを分け、そのセクターの騰落率を紹介した後、各主要銘柄の `chart_image_path` を表示し、ニュースを `on_screen_text` で表示しながら変動原因を分析。各銘柄を丁寧に紹介してください。
-7. 【prev_ir_tracking】: `prev_ir_analysis` の銘柄ごとにシーンを作成。`chart_image_path` を表示し、変動率や直近ニュースを `on_screen_text` で表示しながら、前回から今回への変動要因(reason_summary)を説明。データがなければスキップ。
-8. 【tomorrow_strategy】: `us_tonight_outlook` 内のニュースを具体的に参照し、明日の展望を解説。各ニュースに `visual_image_path` があれば `target_files` に含めてください。
-9. 【closing】: 今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「明日朝7時のモーニングレポートもお楽しみに！」といった言葉で締めてください。
+2. 【market_indices】: 可能なら先に `diagrams.market_board_path`（日経・S&P・ドル円）を見せる。その後、日経平均(NIKKEI)、S&P500(SP500)、ドル円(USDJPY)をそれぞれ独立したシーンに分ける（数値は `market_indices`）。必ず日経平均から先。チャートがある指数は `chart_image_path` を見せ、ドル円は数値中心でも可。
+3. 【news_highlights】: **束ねて紹介 → 影響の読み**。役割は今日の材料（誰が・何が・効き方）。大局の長い地合い説明は指数・セクター側へ寄せ、ここは局所（lane=local / heat）を厚めに。honmei（macro）は短く主語として残す。
+    ※ `attention_news` は選定済み。slot / lane / scope を尊重。
+    1. `diagrams.news_bundle_path` があれば全画面で見せ、honmei と主な heat を束ねて紹介。
+    2. `diagrams.impact_flow_path` を見せ「まとめると市場にどう効くか」を1〜2シーンで予測。
+    3. rotation / `diagrams.capital_flow_path` があれば資金の行き先として触れる。
+    - heat 枠はカリンとの掛け合い（dialogue）を推奨。
+    - `scope=issuer` のニュースは関連チャート・言及をその1社だけに限定（同業に広げない）。
+    - **【ニュース画像】**: 図解を優先。個別 visual は補助。
+4. 【event_calendar】: 決算のみ。`kessan_schedule.image_paths`（なければ `image_path`）を最大2ページ分、ページごとにシーン化。株主総会は扱わない。`data` が空、または画像が無い場合は **このセクションのシーンを一切作らず、次へ無言で進む**（「予定はありません」「スキップします」等は言わない）。
+5. 【sector_overview】: **夜の核。厚めに。** `diagrams.capital_flow_path` があれば先に見せ、続けて `sector_analysis -> rankings_screenshot`。上昇・下落が顕著だったセクターをそれぞれ具体名で挙げ、「なぜ」を短く。news_highlights と同じ話の繰り返し禁止。
+6. 【sector_attention】: **任意・薄め。** overview やニュースと重複するなら **シーンを作らず省略してよい**。残すなら「材料で実際に動いた銘柄」を最大1〜2本だけチャート付きで。代表企業の百科事典・丁寧な全銘柄紹介は禁止。
+7. 【prev_ir_tracking】: `prev_ir_analysis` の銘柄ごとにシーンを作成。`chart_image_path` を表示し、変動率や直近ニュースを `on_screen_text` で表示しながら、前回から今回への変動要因(reason_summary)を説明。データがなければ **無言スキップ**（言い訳しない）。
+8. 【tomorrow_strategy】: `us_tonight_outlook` と本日のニュース束を踏まえ、明日の注目／注意（チェック3点）で締める。**`diagrams.checklist_path` があれば必ず `target_files` に指定**。各ニュースに `visual_image_path` があれば補助で含めてよい。
+9. 【closing】: 掛け合いで締め。今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「明日朝7時のモーニングレポートもお楽しみに！」といった言葉で締めてください。
+
+# 分析データの追加キー
+- `diagrams.news_bundle_path` / `impact_flow_path` / `market_board_path` / `capital_flow_path` / `checklist_path`: 図解PNG。あるときは該当セクションで優先使用。
 
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:
@@ -376,6 +433,8 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 - two_image_layout: 文字列（画像が2枚の場合のみ有効。"horizontal"（左右並列）または "vertical"（上下並列）。デフォルトは "horizontal"）
 - bg_name: 背景画像名（基本は "bg_illust.png"）
 - target_files: 画像パスの配列（分析データ内にある有効なファイルパスを正確に指定。1枚でも配列形式 ["path"] で出力）
+- speaker: 文字列（`"minori"` または `"karin"`。一人語り時）
+- dialogue: 任意。掛け合い時は配列。各要素に speaker / text / speech_text
 
 # 台本作成の鉄則（コンセプト：徹底的な初心者目線＆ロジカル）
     1. 【徹底的な初心者目線】：専門用語（例：流動性、円安メリット、窓開け）の解説にとどまらず、「それが私たちの生活や投資にどう影響するのか」を中学生でもわかるレベルで噛み砕いてください。単なる用語補完ではなく、背景にあるストーリーを重視してください。
@@ -397,7 +456,7 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         - 例: 前半好調・後半注意 → `[{{"segment_index":0,"emotion":"happy"}},{{"segment_index":2,"emotion":"confident"}}]`
         - 代替: `segment_emotions` 配列でも可。
     9. 【行動指針の提示】：最後に「明日の朝はまず〇〇をチェックしましょう」など、視聴者が次に取るべきアクションを具体的に指示してください。
-    10. 【データ不足時の対応】：決算/総会データがない場合、「本日の予定はありません」と事実を伝える。前回紹介銘柄データがない場合、このセクション自体をスキップするか、手短に次へ進む。`attention_news` が空の場合、news_highlights（および関連するニュース紹介）で具体的なニュース見出し/銘柄を捏造せず、「ニュースが取得できませんでした」とだけ述べる。
+    10. 【データ不足時の対応】：決算データが空なら event_calendar シーンを作らない（「予定なし」「スキップ」と言わない）。前回紹介銘柄が空なら無言スキップ。`attention_news` が空の場合のみ「ニュースが取得できませんでした」と述べる。
     11. 【自然な文章構成】：読み上げが不自然に細切れにならないよう、一文一文を適切な長さ（40〜80文字程度）に保ち、意味の区切りで自然に読めるように構成してください。
 
 出力は純粋なJSON配列のみを返してください。

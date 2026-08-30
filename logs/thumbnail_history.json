@@ -1,20 +1,5 @@
 [
   {
-    "date": "2026-03-13T16:49:32.623791",
-    "video_type": "evening_video",
-    "title": "【159円突破】日経5.3万。急落で掴む株"
-  },
-  {
-    "date": "2026-03-14T06:21:10.350277",
-    "video_type": "morning_video",
-    "title": "【地獄】原油100ドル。半導体で富を奪え"
-  },
-  {
-    "date": "2026-03-18T09:17:03.894069",
-    "video_type": "morning_video",
-    "title": "【7日後の革命】テスラ新工場。独占利益を得よ"
-  },
-  {
     "date": "2026-03-18T16:52:07.475380",
     "video_type": "evening_video",
     "title": "【21兆円の勝機】国策銘柄で月30万稼ぐ道"
@@ -498,5 +483,20 @@
     "date": "2026-06-04T19:39:29.800035",
     "video_type": "evening_video",
     "title": "【TSMC増強】AI半導体供給網が激変"
+  },
+  {
+    "date": "2026-08-26T09:25:04.134970",
+    "video_type": "morning_video",
+    "title": "【Moderna急騰】バイオ株が再浮上"
+  },
+  {
+    "date": "2026-08-28T11:22:07.242906",
+    "video_type": "morning_video",
+    "title": "【インテル82%割安】AI提携で巨大半導体が覚醒"
+  },
+  {
+    "date": "2026-08-28T13:50:38.713068",
+    "video_type": "morning_video",
+    "title": "セールスフォース23%急騰の裏側"
   }
 ]

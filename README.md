@@ -57,9 +57,10 @@ YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
 **Gemini モデル・APIキー方針**
-- 検索・サムネ・JSON整形など（Search 以外の通常タスク）: **`gemini-3.1-flash-lite`**
-- **台本生成のみ**: **`gemini-3.5-flash`** → 503 時 **`gemini-3-flash-preview`** にフォールバック
-  - 単一指定: `GEMINI_MODEL_SCRIPT=gemini-3-flash-preview`（または `gemini-3.5-flash`）
+- 検索・サムネ・JSON整形など（Search 以外の通常タスク）: **`gemini-3.5-flash-lite`**
+- **台本生成のみ**: **`gemini-3.7-flash`** (第一候補)
+  - 失敗時のフォールバック順: `3.7-flash` → `3.6-flash` → `3.5-flash` → `3.5-flash-lite`
+  - 単一指定: `GEMINI_MODEL_SCRIPT=gemini-3.5-flash`（または任意のモデルID）
   - preview を先に試す: `GEMINI_SCRIPT_PREVIEW_FIRST=true`
 - ニュース検索（Google Search）: 上記 lite + **`GEMINI_API_KEY_SEARCH`（有料枠キー）**
 - それ以外: **`GEMINI_API_KEY`（無料枠）**

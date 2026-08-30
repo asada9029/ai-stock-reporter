@@ -144,8 +144,8 @@ _EVENING_SECTIONS: Tuple[SectionRequirement, ...] = (
     ),
     SectionRequirement(
         "event_calendar",
-        "決算・株主総会スケジュール",
-        ("決算", "株主総会", "event_calendar", "スケジュール", "カレンダー"),
+        "注目決算スケジュール",
+        ("決算", "event_calendar", "スケジュール", "カレンダー"),
     ),
     SectionRequirement(
         "sector_overview",
@@ -156,6 +156,7 @@ _EVENING_SECTIONS: Tuple[SectionRequirement, ...] = (
         "sector_attention",
         "注目セクター・銘柄",
         ("注目セクター", "sector_attention", "注目銘柄"),
+        optional=True,
     ),
     SectionRequirement(
         "prev_ir_tracking",

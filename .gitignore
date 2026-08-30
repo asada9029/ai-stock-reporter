@@ -4,7 +4,12 @@ venv/
 .env.*
 !.env.example
 
+# YouTube OAuth（絶対にコミットしない）
 src/config/youtube_secrets.json
+src/config/token.json
+**/token.json
+client_secret*.json
+credentials.json
 
 # Python cache / bytecode
 **/__pycache__/
