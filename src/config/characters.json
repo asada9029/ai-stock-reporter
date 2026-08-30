@@ -23,7 +23,12 @@
     "images": {
       "normal": "karin_normal.png",
       "happy": "karin_happy.png",
-      "excited": "karin_excited.png"
+      "excited": "karin_excited.png",
+      "surprised": "karin_surprised.png",
+      "sad": "karin_sad.png",
+      "confident": "karin_confident.png",
+      "angry": "karin_angry.png",
+      "disappointed": "karin_disappointed.png"
     }
   }
 }

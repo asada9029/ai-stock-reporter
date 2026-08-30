@@ -489,6 +489,7 @@ def compose_video_from_analysis(
                     seg_i += 1
                     audio_path = audio_dir / f"scene_{idx}_seg_{seg_i}.wav"
                     try:
+                        # 声は常にノーマル。emotion は立ち絵専用で TTS には渡さない
                         vv.generate_and_save(
                             seg_speech, str(audio_path), speaker=voice_id, speed=0.95
                         )
