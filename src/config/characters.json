@@ -1,0 +1,29 @@
+{
+  "minori": {
+    "id": "minori",
+    "display_name": "株野みのり",
+    "role": "host",
+    "speaking_style": "敬語。やさしいが芯が硬い。根拠のない強気はスルーし、短く断定して締める。",
+    "voicevox": {
+      "speaker_name": "四国めたん",
+      "style": "ノーマル",
+      "speaker_id": 2
+    }
+  },
+  "karin": {
+    "id": "karin",
+    "display_name": "相場カリン",
+    "role": "partner",
+    "speaking_style": "タメ口寄り。好奇心暴走の後輩。視聴者代弁で早とちりし、旬・急騰落に飛びつく。みのりに止められるのが定番。",
+    "voicevox": {
+      "speaker_name": "春日部つむぎ",
+      "style": "ノーマル",
+      "speaker_id": 8
+    },
+    "images": {
+      "normal": "karin_normal.png",
+      "happy": "karin_happy.png",
+      "excited": "karin_excited.png"
+    }
+  }
+}

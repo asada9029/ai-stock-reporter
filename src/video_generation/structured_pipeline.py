@@ -14,6 +14,11 @@ from moviepy import AudioFileClip, VideoFileClip, AudioClip, CompositeAudioClip,
 from moviepy.audio.fx import AudioFadeIn, AudioFadeOut, MultiplyVolume
 
 from src.config.presentation import is_immersive_mode, normalize_presentation_mode
+from src.analysis.dialogue_util import (
+    expand_scene_speech_units,
+    primary_speaker_for_scene,
+    resolve_voicevox_id,
+)
 
 
 def _reorder_attention_news_for_thumbnail(
@@ -299,7 +304,7 @@ def compose_video_from_analysis(
             assets_dir=assets_dir,
             size=size,
             fps=fps,
-            show_subtitles=False,
+            show_subtitles=True,
             presentation_mode=presentation_mode,
         )
         return video_path, thumb_path, thumb_title, thumb_highlights, ""
@@ -428,8 +433,6 @@ def compose_video_from_analysis(
 
         for i, sc in enumerate(scenes):
             idx = sc.get("scene", i + 1)
-            display_text = sc.get("text", "")
-            speech_text = sc.get("speech_text") or display_text
             padding_before = float(sc.get("padding_before", 0.3))
             padding_after = float(sc.get("padding_after", 0.3))
             max_chars = int(sc.get("max_chars_per_segment", 80))
@@ -463,41 +466,62 @@ def compose_video_from_analysis(
                 print(f"  => シーン{idx} (mute) 期間: {sc['duration']}s")
                 continue
 
-            speech_segments, display_segments = _split_text_segments_aligned(speech_text, display_text, max_chars)
-            
-            segments = []
-            
-            cursor = padding_before 
-            scene_audio_only_duration = 0.0
+            speech_units = expand_scene_speech_units(sc)
+            sc["speaker"] = primary_speaker_for_scene(sc)
 
-            for j, (seg_speech, seg_display) in enumerate(
-                zip(speech_segments, display_segments)
-            ):
-                audio_path = audio_dir / f"scene_{idx}_seg_{j+1}.wav"
-                try:
-                    # 話速を少し落とす (speed=0.95)
-                    vv.generate_and_save(seg_speech, str(audio_path), speed=0.95)
-                    with AudioFileClip(str(audio_path)) as ac:
-                        seg_dur = max(0.05, ac.duration)
-                    
-                    segments.append({
-                        "text": seg_display,
-                        "duration": round(seg_dur, 3),
-                        "start": round(cursor, 3),
-                        "audio_path": str(audio_path)
-                    })
-                    cursor += seg_dur
-                    scene_audio_only_duration += seg_dur
-                    print(f"  - シーン{idx} セグメント{j+1}: dur={seg_dur:.2f}s start={segments[-1]['start']:.2f}s")
-                except Exception as e:
-                    print(f"[WARN] 音声生成失敗: {e}")
-                    est = max(0.5, len(seg_speech) / 4.0)
-                    segments.append({
-                        "text": seg_display, "duration": round(est, 3),
-                        "start": round(cursor, 3), "audio_path": None
-                    })
-                    cursor += est
-                    scene_audio_only_duration += est
+            segments = []
+            cursor = padding_before
+            scene_audio_only_duration = 0.0
+            seg_i = 0
+
+            for unit in speech_units:
+                unit_speech = unit.get("speech_text") or ""
+                unit_display = unit.get("text") or unit_speech
+                unit_speaker = unit.get("speaker") or "minori"
+                voice_id = resolve_voicevox_id(unit_speaker)
+                speech_segments, display_segments = _split_text_segments_aligned(
+                    unit_speech, unit_display, max_chars
+                )
+                if not speech_segments and unit_speech:
+                    speech_segments, display_segments = [unit_speech], [unit_display]
+
+                for seg_speech, seg_display in zip(speech_segments, display_segments):
+                    seg_i += 1
+                    audio_path = audio_dir / f"scene_{idx}_seg_{seg_i}.wav"
+                    try:
+                        vv.generate_and_save(
+                            seg_speech, str(audio_path), speaker=voice_id, speed=0.95
+                        )
+                        with AudioFileClip(str(audio_path)) as ac:
+                            seg_dur = max(0.05, ac.duration)
+
+                        segments.append({
+                            "text": seg_display,
+                            "duration": round(seg_dur, 3),
+                            "start": round(cursor, 3),
+                            "audio_path": str(audio_path),
+                            "speaker": unit_speaker,
+                            "voicevox_speaker_id": voice_id,
+                        })
+                        cursor += seg_dur
+                        scene_audio_only_duration += seg_dur
+                        print(
+                            f"  - シーン{idx} セグメント{seg_i} [{unit_speaker}/{voice_id}]: "
+                            f"dur={seg_dur:.2f}s start={segments[-1]['start']:.2f}s"
+                        )
+                    except Exception as e:
+                        print(f"[WARN] 音声生成失敗: {e}")
+                        est = max(0.5, len(seg_speech) / 4.0)
+                        segments.append({
+                            "text": seg_display,
+                            "duration": round(est, 3),
+                            "start": round(cursor, 3),
+                            "audio_path": None,
+                            "speaker": unit_speaker,
+                            "voicevox_speaker_id": voice_id,
+                        })
+                        cursor += est
+                        scene_audio_only_duration += est
 
             sc["segments"] = segments
             from src.video_generation.character_emotion import assign_segment_emotions
@@ -518,7 +542,8 @@ def compose_video_from_analysis(
             assets_dir=assets_dir, 
             size=size, 
             fps=fps,
-            show_subtitles=False,
+            # キャラの読み上げ（segments）をキャラ間テロップとして表示
+            show_subtitles=True,
             presentation_mode=presentation_mode,
         )
 

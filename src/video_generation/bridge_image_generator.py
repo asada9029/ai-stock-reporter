@@ -1,9 +1,9 @@
 """
 セクションブリッジ用の全画面カード（Pillow）を生成する。
 
-- 背景: サムネのタイトル帯（band）と同じ色を全面に使用
-  - 朝: 赤 (200, 0, 0) / 夜: 青 (0, 30, 80)
-- 文字: 白・画面中央・大きめ（video_structure.json の content.title）
+Studio Soft:
+- 背景: bg_illust.png + 朝ピーチ / 夜インディゴの半透明オーバーレイ
+- 文字: 濃い茶グレー + 太い影1層（細い多重縁は使わない）
 - キャラは載せない（レンダラー側で透過キャラを重ねる）
 """
 
@@ -15,9 +15,10 @@ import textwrap
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from src.video_generation.thumbnail_generator import ThumbnailGenerator
+from src.config.studio_soft import STUDIO_SOFT, overlay_for_category, ink_color
 
 # 横型本編と同じ解像度
 BRIDGE_SIZE = (1920, 1080)
@@ -136,16 +137,14 @@ class BridgeImageGenerator:
         *,
         video_category: str = "evening",
         output_path: Optional[Path] = None,
+        subtitle: Optional[str] = None,
     ) -> str:
         """
-        1枚のブリッジ PNG を生成。
-        - 背景: bg_illust.png
-        - 前面: 癒やし系のクリーム色全画面オーバーレイ
-        - 文字: テーマカラー（濃色）・中央・巨大
+        Studio Soft ブリッジ PNG（番組感・見たくなる転換カード）。
+        背景イラストは残しつつ、中央にフロストカード＋特大タイトル。
         """
         w, h = BRIDGE_SIZE
-        
-        # 1. 背景イラストの読み込み
+
         bg_path = self.assets_dir / "images" / "bg_illust.png"
         if bg_path.exists():
             img = Image.open(bg_path).convert("RGBA")
@@ -154,33 +153,80 @@ class BridgeImageGenerator:
         else:
             img = Image.new("RGBA", (w, h), (240, 240, 240, 255))
 
-        # 2. クリーム色オーバーレイ（癒やし系・暖かいトーン）
-        # 背景をほぼ覆いつつ、イラストをわずかに透かす (不透明度 240/255)
-        # 少しオレンジ・黄色寄りの暖かいクリーム色 (#FFF4E1 相当)
-        overlay = Image.new("RGBA", (w, h), (255, 244, 225, 240))
-        img = Image.alpha_composite(img, overlay)
+        # 朝/夜の色味
+        if video_category == "morning":
+            tint = (255, 200, 150, 70)
+            accent = STUDIO_SOFT["soft_coral"]
+            badge = "MORNING"
+        else:
+            tint = (60, 90, 140, 85)
+            accent = STUDIO_SOFT["soft_blue"]
+            badge = "EVENING"
+
+        img = Image.alpha_composite(img, Image.new("RGBA", (w, h), tint))
+        # 端を少し暗くして中央に視線を集める
+        vignette = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        vd = ImageDraw.Draw(vignette)
+        for i, a in enumerate((50, 35, 20)):
+            inset = 20 + i * 40
+            vd.rectangle((0, 0, w, inset), fill=(30, 24, 20, a))
+            vd.rectangle((0, h - inset, w, h), fill=(30, 24, 20, a))
+            vd.rectangle((0, 0, inset, h), fill=(30, 24, 20, a // 2))
+            vd.rectangle((w - inset, 0, w, h), fill=(30, 24, 20, a // 2))
+        img = Image.alpha_composite(img, vignette)
+
+        # 中央フロストカード
+        card_w, card_h = int(w * 0.78), int(h * 0.42)
+        card_x = (w - card_w) // 2
+        card_y = (h - card_h) // 2 - 40
+        card_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        cd = ImageDraw.Draw(card_layer)
+        # soft shadow under card
+        cd.rounded_rectangle(
+            (card_x + 10, card_y + 16, card_x + card_w, card_y + card_h),
+            radius=36,
+            fill=(44, 36, 32, 55),
+        )
+        card_layer = card_layer.filter(ImageFilter.GaussianBlur(18))
+        img = Image.alpha_composite(img, card_layer)
+        card_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        cd = ImageDraw.Draw(card_layer)
+        cream = STUDIO_SOFT["surface_cream_solid"]
+        cd.rounded_rectangle(
+            (card_x, card_y, card_x + card_w, card_y + card_h),
+            radius=36,
+            fill=(*cream, 220),
+            outline=(255, 255, 255, 160),
+            width=3,
+        )
+        # left accent bar
+        cd.rounded_rectangle(
+            (card_x + 28, card_y + 48, card_x + 44, card_y + card_h - 48),
+            radius=8,
+            fill=(*accent, 230),
+        )
+        img = Image.alpha_composite(img, card_layer)
         draw = ImageDraw.Draw(img)
 
-        colors = ThumbnailGenerator.COLORS.get(
-            video_category, ThumbnailGenerator.COLORS["evening"]
+        # 小さな番組バッジ
+        badge_font = _fit_font_size(draw, badge, self.font_path, 280, start_size=28, min_size=18)
+        bb = draw.textbbox((0, 0), badge, font=badge_font)
+        bw, bh = bb[2] - bb[0], bb[3] - bb[1]
+        bx, by = card_x + 70, card_y + 36
+        draw.rounded_rectangle(
+            (bx - 16, by - 8, bx + bw + 16, by + bh + 8),
+            radius=16,
+            fill=(*accent, 210),
         )
-        
-        # 文字色はテーマの「縁取り色（濃色）」をメインに据える
-        text_color = colors.get("outline", (40, 40, 40))
-        # 逆に縁取りを白にして、文字を浮かせる
-        outline_color = (255, 255, 255)
+        draw.text((bx, by), badge, font=badge_font, fill=(255, 255, 255, 255))
 
-        # 3. テキストの描画
-        lines = _wrap_title(title, max_chars_per_line=18)
-        text_max_w = int(w * 0.85)
+        text_color = ink_color()
+        shadow_color = STUDIO_SOFT["bridge_shadow"]
+        lines = _wrap_title(title, max_chars_per_line=14)
+        text_max_w = card_w - 140
         longest = max(lines, key=len)
         font = _fit_font_size(
-            draw,
-            longest,
-            self.font_path,
-            text_max_w,
-            start_size=180,
-            min_size=100,
+            draw, longest, self.font_path, text_max_w, start_size=150, min_size=72
         )
 
         line_metrics: List[Tuple[int, int]] = []
@@ -188,42 +234,28 @@ class BridgeImageGenerator:
             bbox = draw.textbbox((0, 0), line, font=font)
             line_metrics.append((bbox[2] - bbox[0], bbox[3] - bbox[1]))
 
-        line_gap = 40
+        line_gap = 28
         total_text_h = sum(lh for _, lh in line_metrics) + max(0, len(lines) - 1) * line_gap
-        # 少し上に配置 (中央から 100px 上へ)
-        current_y = (h - total_text_h) // 2 - 100
-
-        # 縁取り色の選定
-        if video_category == "morning":
-            # 朝：濃い茶色の文字に、温かいピーチ系の外枠
-            outer_outline = (255, 210, 180) 
-        else:
-            # 夜：濃い紺色の文字に、落ち着いた水色グレーの外枠
-            outer_outline = (180, 200, 230)
+        current_y = card_y + (card_h - total_text_h) // 2 + 10
 
         for i, line in enumerate(lines):
             lw, lh = line_metrics[i]
-            x = (w - lw) // 2
-            
-            # 二重縁取りで「目立たせる」かつ「なごませる」
-            # 1. 大外（淡色）
-            self._thumb._draw_text_with_outline(
-                draw, (x, current_y), line, font,
-                fill_color=outer_outline,
-                outline_color=outer_outline,
-                outline_width=12,
-            )
-            # 2. 内側（白：境界をくっきりさせる）
-            self._thumb._draw_text_with_outline(
-                draw, (x, current_y), line, font,
-                fill_color=(255, 255, 255),
-                outline_color=(255, 255, 255),
-                outline_width=6,
-            )
-            # 3. 文字本体（濃色）
+            x = card_x + (card_w - lw) // 2 + 10
+            draw.text((x + 5, current_y + 5), line, font=font, fill=(*shadow_color, 70))
             draw.text((x, current_y), line, font=font, fill=text_color)
-            
             current_y += lh + line_gap
+
+        sub = subtitle or "マイカブ｜やさしくわかる今日の株"
+        sub_font = _fit_font_size(draw, sub, self.font_path, int(card_w * 0.7), start_size=36, min_size=22)
+        sb = draw.textbbox((0, 0), sub, font=sub_font)
+        sx = card_x + (card_w - (sb[2] - sb[0])) // 2
+        sy = card_y + card_h + 28
+        draw.rounded_rectangle(
+            (sx - 24, sy - 10, sx + (sb[2] - sb[0]) + 24, sy + (sb[3] - sb[1]) + 10),
+            radius=18,
+            fill=(255, 248, 240, 200),
+        )
+        draw.text((sx, sy), sub, font=sub_font, fill=STUDIO_SOFT["mute"])
 
         if output_path is None:
             safe = re.sub(r"[^\w\-]+", "_", title)[:40]
