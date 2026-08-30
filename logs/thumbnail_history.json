@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-09T06:46:15.627183",
-    "video_type": "morning_video",
-    "title": "【Micron急反発】AI相場の震源地が動いた"
-  },
-  {
     "date": "2026-06-09T19:31:57.017293",
     "video_type": "evening_video",
     "title": "【NVDA納期短縮】半導体供給網が劇的進化"
@@ -498,5 +493,10 @@
     "date": "2026-08-28T03:02:18.149853",
     "video_type": "evening_video",
     "title": "【トヨタ全固体電池】次世代EV覇権の奪還へ"
+  },
+  {
+    "date": "2026-08-31T07:16:24.947454",
+    "video_type": "morning_video",
+    "title": "【AI基盤需要】Rambus急浮上で読めない半導体覇権"
   }
 ]
