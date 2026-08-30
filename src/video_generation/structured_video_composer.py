@@ -894,7 +894,7 @@ def _asset_for_emotion(
     is_shorts: bool = False,
     speaker: str = "minori",
 ) -> Optional[Path]:
-    """話者ごとの立ち絵。カリンは characters.json の images（仮置き）を優先。"""
+    """話者ごとの立ち絵。カリンは characters.json の images を優先。"""
     sp = (speaker or "minori").strip().lower()
     if sp == "karin":
         named = get_character_image_name("karin", emotion)
