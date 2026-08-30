@@ -78,7 +78,7 @@
 - 全編二人にはしない。情報ブロックはみのり主導、感情ブロックだけカリンを出す。
 ```
 
-パイプラインは `dialogue` を読み上げ単位に展開し、speaker ごとに VOICEVOX ID を切り替える。カリンの仮立ち絵は emotion（normal / happy / excited）で切替。
+パイプラインは `dialogue` を読み上げ単位に展開し、speaker ごとに VOICEVOX ID を切り替える。カリンの立ち絵は emotion 8種（normal / happy / excited / surprised / sad / confident / angry / disappointed）で切替。VOICEVOX は常にノーマル（感情スタイル切替なし）。
 
 ### 感情
 
@@ -91,6 +91,7 @@
 - 強い批判 → `angry`
 - 見通しの断定 → `confident`
 - 全体を `normal` だけにしない
+- **emotion は立ち絵専用。** 読み上げは常に VOICEVOX ノーマル（スタイル・抑揚・話速は感情で変えない）
 - speech が2句以上、または1シーン内でトーンが変わるときは `emotion_timeline`（`segment_index` + `emotion`）。秒数は音声長からシステムが計算。LLMが省略した場合はキーワードから補完
 
 ---
