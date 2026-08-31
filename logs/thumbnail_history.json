@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-09T19:31:57.017293",
-    "video_type": "evening_video",
-    "title": "【NVDA納期短縮】半導体供給網が劇的進化"
-  },
-  {
     "date": "2026-06-10T06:32:40.651878",
     "video_type": "morning_video",
     "title": "【半導体巨額受注】AI革命が再加速"
@@ -498,5 +493,10 @@
     "date": "2026-08-31T07:16:24.947454",
     "video_type": "morning_video",
     "title": "【AI基盤需要】Rambus急浮上で読めない半導体覇権"
+  },
+  {
+    "date": "2026-08-31T23:33:54.364509",
+    "video_type": "evening_video",
+    "title": "【百貨店松屋25%急落】権利落ち後の残酷な現実"
   }
 ]
