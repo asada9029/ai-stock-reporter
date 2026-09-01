@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-11T06:56:29.566077",
-    "video_type": "morning_video",
-    "title": "【S&P500急落】120pt下落の警鐘"
-  },
-  {
     "date": "2026-06-11T20:24:45.622196",
     "video_type": "evening_video",
     "title": "【S&P500急落】米IPO前夜の換金売り警報"
@@ -498,5 +493,10 @@
     "date": "2026-09-01T21:09:37.991970",
     "video_type": "evening_video",
     "title": "【スクエニHD急伸】非公開化の思惑で何が起きる？"
+  },
+  {
+    "date": "2026-09-02T07:14:28.537596",
+    "video_type": "morning_video",
+    "title": "【米電力株23%暴落】カリフォルニア法案の衝撃"
   }
 ]
