@@ -1,30 +1,5 @@
 [
   {
-    "date": "2026-06-09T06:46:15.627183",
-    "video_type": "morning_video",
-    "title": "【Micron急反発】AI相場の震源地が動いた"
-  },
-  {
-    "date": "2026-06-09T19:31:57.017293",
-    "video_type": "evening_video",
-    "title": "【NVDA納期短縮】半導体供給網が劇的進化"
-  },
-  {
-    "date": "2026-06-10T06:32:40.651878",
-    "video_type": "morning_video",
-    "title": "【半導体巨額受注】AI革命が再加速"
-  },
-  {
-    "date": "2026-06-10T19:52:03.461527",
-    "video_type": "evening_video",
-    "title": "【次世代AIチップ】受注爆増の裏で日本メーカーに奇跡"
-  },
-  {
-    "date": "2026-06-11T06:56:29.566077",
-    "video_type": "morning_video",
-    "title": "【S&P500急落】120pt下落の警鐘"
-  },
-  {
     "date": "2026-06-11T20:24:45.622196",
     "video_type": "evening_video",
     "title": "【S&P500急落】米IPO前夜の換金売り警報"
@@ -498,5 +473,30 @@
     "date": "2026-08-28T03:02:18.149853",
     "video_type": "evening_video",
     "title": "【トヨタ全固体電池】次世代EV覇権の奪還へ"
+  },
+  {
+    "date": "2026-08-31T07:16:24.947454",
+    "video_type": "morning_video",
+    "title": "【AI基盤需要】Rambus急浮上で読めない半導体覇権"
+  },
+  {
+    "date": "2026-08-31T23:33:54.364509",
+    "video_type": "evening_video",
+    "title": "【百貨店松屋25%急落】権利落ち後の残酷な現実"
+  },
+  {
+    "date": "2026-09-01T08:32:41.961459",
+    "video_type": "morning_video",
+    "title": "【ホルムズ海峡危機】原油急騰と米軍攻撃で相場急変"
+  },
+  {
+    "date": "2026-09-01T21:09:37.991970",
+    "video_type": "evening_video",
+    "title": "【スクエニHD急伸】非公開化の思惑で何が起きる？"
+  },
+  {
+    "date": "2026-09-02T07:14:28.537596",
+    "video_type": "morning_video",
+    "title": "【米電力株23%暴落】カリフォルニア法案の衝撃"
   }
 ]
