@@ -490,7 +490,8 @@ def _paginate_text_px(
             else:
                 hi = mid - 1
         # 句読点優先だが、行が短すぎる位置では切らない（「みのりさん、」だけで終わらない）
-        min_keep = max(1, int(best * 0.55))
+        # カタカナなどの単語境界まで安全に戻れるよう、min_keep を少し緩める
+        min_keep = max(1, int(best * 0.30))
         n = best
         for i in range(best, min_keep, -1):
             if src[i - 1] in "。、．，,!！?？ ":
@@ -619,6 +620,20 @@ def _is_spoken_filler_line(text: str) -> bool:
     return any(m in t for m in markers)
 
 
+def _path_looks_like_chart(path_str: str, sc: dict) -> bool:
+    """チャートPNGか（図解は除外）。"""
+    if _is_studio_diagram_path(path_str):
+        return False
+    name = str(path_str or "").lower().replace("\\", "/")
+    img_type = str(sc.get("image_type", "") or "")
+    return (
+        img_type.startswith("chart")
+        or "chart" in name
+        or "stock_charts" in name
+        or "market_charts" in name
+    )
+
+
 def _is_studio_diagram_path(path_str: str) -> bool:
     name = str(path_str or "").lower().replace("\\", "/")
     return any(
@@ -632,6 +647,17 @@ def _is_studio_diagram_path(path_str: str) -> bool:
             "checklist",
         )
     )
+
+
+def _lines_have_category_markers(lines: List[str]) -> bool:
+    """「・市場：…」形式の行があるか。"""
+    for ln in lines:
+        s = str(ln).strip().lstrip("・•")
+        if "：" in s:
+            return True
+        if ":" in s and not s.lower().startswith("http"):
+            return True
+    return False
 
 
 def _densify_on_screen_lines(
@@ -1160,8 +1186,8 @@ def _render_news_focus_clip(
     blue = STUDIO_SOFT["soft_blue"]
     ticker_font = _pil_font(font_path, 88)
     company_font = _pil_font(font_path, 42)
-    # トピックは文字数が少なくても 48px だと1行に収まらない。本文は 36。
-    body_font = _pil_font(font_path, 36 if not ticker else 40)
+    # チャート無しの箇条書きは opening 並みの視認性を確保
+    body_font = _pil_font(font_path, 46 if not ticker else 40)
 
     tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
     td = ImageDraw.Draw(tmp)
@@ -1200,9 +1226,12 @@ def _render_news_focus_clip(
 
     header_w = tw + (28 + cw if company_disp else 0)
     inner_w = max(header_w, max_line_w)
-    w = int(max_width)
+    if ticker:
+        w = int(max_width)
+    else:
+        w = int(min(max_width, max(inner_w + pad_x * 2 + 64, 540)))
     content_h = pad_y * 2 + max(th, ch, 1) + (36 + lines_h if bullet_blocks else 0)
-    h = max(content_h, 240)
+    h = max(content_h, 240 if ticker else 200)
 
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -1264,6 +1293,167 @@ def _render_news_focus_clip(
         for ln, lw, lh, bb in block:
             try:
                 draw.text((pad_x, y + lh / 2), ln, font=body_font, fill=(*ink, 255), anchor="lm")
+            except TypeError:
+                draw.text((pad_x, y - bb[1]), ln, font=body_font, fill=(*ink, 255))
+            y += lh + inner_line_gap
+        y -= inner_line_gap
+        if bi < len(bullet_blocks) - 1:
+            y += bullet_item_gap
+
+    return _rgba_image_clip(img, duration=duration, start=start), w, h
+
+
+def _split_section_title(section_title: str) -> Tuple[str, str]:
+    """「米国セクター分析：買われたハイテク」→ (左, 右)。"""
+    s = str(section_title or "").strip()
+    for sep in ("：", ":"):
+        if sep in s:
+            left, right = s.split(sep, 1)
+            return left.strip(), right.strip()
+    return "", s
+
+
+def _bullet_body_font_size(line_count: int, avail_height: int) -> int:
+    """行数が少ないほど大きく、縦余白があればさらに拡大。"""
+    n = max(1, min(6, int(line_count)))
+    base = {1: 58, 2: 56, 3: 54, 4: 50, 5: 46, 6: 44}.get(n, 44)
+    if avail_height >= 540 and n <= 3:
+        base += 4
+    elif avail_height >= 500 and n <= 4:
+        base += 2
+    return base
+
+
+def _render_immersive_bullet_clip(
+    *,
+    lines: List[str],
+    section_title: str,
+    font_path: Optional[str],
+    max_width: int,
+    avail_height: int,
+    duration: float,
+    start: float,
+) -> Tuple[ImageClip, int, int]:
+    """チャート無しの箇条書きシーン。行数に応じてカードと文字を拡大して余白感を抑える。"""
+    clean_lines = [str(x).strip() for x in lines if str(x).strip()][:6]
+    if not clean_lines:
+        clean_lines = ["要点を確認"]
+
+    kicker, headline = _split_section_title(section_title)
+    if kicker.lower().startswith("opening") or "トピック" in kicker:
+        kicker, headline = "", headline or kicker
+
+    ink = ink_color()
+    cream = STUDIO_SOFT["surface_cream_solid"]
+    blue = STUDIO_SOFT["soft_blue"]
+    n = len(clean_lines)
+    body_fs = _bullet_body_font_size(n, avail_height)
+    body_font = _pil_font(font_path, body_fs)
+    kicker_font = _pil_font(font_path, 30)
+    headline_font = _pil_font(font_path, 40)
+
+    tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+
+    def _m(text: str, font) -> Tuple[int, int, Tuple[int, int, int, int]]:
+        bb = td.textbbox((0, 0), text, font=font)
+        return bb[2] - bb[0], bb[3] - bb[1], bb
+
+    pad_x, pad_y = 56, 52
+    w = int(max(620, min(int(max_width), int(max_width * 0.92))))
+    wrap_w = max(320, w - pad_x * 2)
+    inner_line_gap = 8
+    bullet_item_gap = 32 if n <= 3 else (26 if n == 4 else 20)
+
+    header_h = 0
+    if kicker:
+        _, kh, _ = _m(kicker[:20], kicker_font)
+        header_h += kh + 10
+    if headline:
+        headline_wrapped = _wrap_text_to_px(headline, headline_font, wrap_w, max_lines=2, ellipsis=True)
+        for hln in headline_wrapped:
+            _, hh, _ = _m(hln, headline_font)
+            header_h += hh + 6
+        if headline_wrapped:
+            header_h -= 6
+        header_h += 18
+
+    bullet_blocks: List[List[Tuple[str, int, int, Tuple[int, int, int, int]]]] = []
+    max_line_w = 0
+    lines_h = 0
+    for ln in clean_lines:
+        disp = ln if ln.startswith("・") or ln.startswith("•") else f"・{ln}"
+        wrapped = _wrap_text_to_px(disp, body_font, wrap_w, max_lines=2, ellipsis=False)
+        block = []
+        for i, wln in enumerate(wrapped):
+            if i > 0 and not wln.startswith("　"):
+                wln = "　" + wln
+            lw, lh, bb = _m(wln, body_font)
+            block.append((wln, lw, lh, bb))
+            max_line_w = max(max_line_w, lw)
+            lines_h += lh + inner_line_gap
+        if block:
+            lines_h -= inner_line_gap
+            lines_h += bullet_item_gap
+            bullet_blocks.append(block)
+    if lines_h:
+        lines_h -= bullet_item_gap
+
+    content_h = pad_y * 2 + header_h + lines_h
+    min_h = max(content_h, int(max(360, avail_height) * 0.62))
+    h = int(min_h)
+
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (6, 10, w - 2, h - 2),
+        radius=30,
+        fill=(44, 36, 32, int(STUDIO_SOFT.get("panel_shadow_alpha", 72))),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(12))
+    img = Image.alpha_composite(img, shadow)
+    draw = ImageDraw.Draw(img)
+    outline = STUDIO_SOFT.get("panel_outline", (*blue, 200))
+    draw.rounded_rectangle(
+        (2, 2, w - 6, h - 6),
+        radius=28,
+        fill=(*cream, int(STUDIO_SOFT.get("panel_cream_alpha", 250))),
+        outline=outline if isinstance(outline, tuple) else (*blue, 200),
+        width=3,
+    )
+    draw.rounded_rectangle((2, 2, 14, h - 6), radius=8, fill=(*blue, 220))
+
+    block_total_h = header_h + lines_h
+    y = pad_y + max(0, (h - pad_y * 2 - block_total_h) // 2)
+
+    if kicker:
+        draw.rounded_rectangle(
+            (pad_x, y, pad_x + min(wrap_w, 260), y + 40),
+            radius=14,
+            fill=(*blue, 230),
+        )
+        try:
+            draw.text((pad_x + 18, y + 20), kicker[:16], font=kicker_font, fill=(255, 255, 255, 255), anchor="lm")
+        except TypeError:
+            _, kh, kb = _m(kicker[:16], kicker_font)
+            draw.text((pad_x + 18, y + 20 - kh // 2 - kb[1]), kicker[:16], font=kicker_font, fill=(255, 255, 255, 255))
+        y += 48
+
+    if headline:
+        for hln in _wrap_text_to_px(headline, headline_font, wrap_w, max_lines=2, ellipsis=True):
+            _, hh, hb = _m(hln, headline_font)
+            try:
+                draw.text((pad_x, y + hh // 2), hln, font=headline_font, fill=(26, 35, 126, 255), anchor="lm")
+            except TypeError:
+                draw.text((pad_x, y - hb[1]), hln, font=headline_font, fill=(26, 35, 126, 255))
+            y += hh + 8
+        y += 12
+
+    for bi, block in enumerate(bullet_blocks):
+        for ln, _lw, lh, bb in block:
+            try:
+                draw.text((pad_x, y + lh // 2), ln, font=body_font, fill=(*ink, 255), anchor="lm")
             except TypeError:
                 draw.text((pad_x, y - bb[1]), ln, font=body_font, fill=(*ink, 255))
             y += lh + inner_line_gap
@@ -1416,10 +1606,11 @@ def _calculate_smart_layout(
         h = img_available_h
         positions.append({"x": start_x, "y": start_y, "w": w, "h": h})
     elif count == 2:
-        w = (main_area_w // 2) - margin
+        gap = 10 if bottom_reserved_h is not None else margin
+        w = max(280, (main_area_w - gap) // 2)
         h = img_available_h
         positions.append({"x": start_x, "y": start_y, "w": w, "h": h})
-        positions.append({"x": start_x + w + margin, "y": start_y, "w": w, "h": h})
+        positions.append({"x": start_x + w + gap, "y": start_y, "w": w, "h": h})
     elif count == 3:
         h = (img_available_h // 2) - (margin // 2)
         w_half = (main_area_w // 2) - (margin // 2)
@@ -1485,6 +1676,8 @@ def render_scenes_to_video(
         immersive_chart_top: Optional[int] = None
         immersive_chart_h: Optional[int] = None
         chart_caption_lines: List[str] = []
+        dual_chart_with_text = False
+        single_chart_with_text = False
         
         # --- 1. 背景レイヤー ---
         bg_name = sc.get("bg_name", "bg_illust.png")
@@ -1756,6 +1949,17 @@ def render_scenes_to_video(
                 and (not diagram_only)
                 and any(str(t).strip() for t in ost_preview)
             )
+            dual_chart_with_text = bool(
+                chart_side_by_side
+                and len(target_files) == 2
+                and all(_path_looks_like_chart(str(p), sc) for p in resolved_paths)
+            )
+            single_chart_with_text = bool(
+                chart_side_by_side
+                and len(target_files) == 1
+                and resolved_paths
+                and _path_looks_like_chart(str(resolved_paths[0]), sc)
+            )
             layout_has_text = bool(on_screen_text) and (not diagram_only) and (not chart_side_by_side)
 
             # テキストがあるかどうか、および画像の向きをレイアウト計算に伝える
@@ -1775,6 +1979,38 @@ def render_scenes_to_video(
                 content_w=layout_w,
                 bottom_reserved_h=bottom_reserved_h,
             )
+            if single_chart_with_text:
+                base_x = int(layout_x or content_x or margin) + margin
+                usable_w = max(720, int(layout_w or content_w or main_area_w) - margin * 2)
+                avail_top = int(top_reserved_h_for_scene or start_y) + 8
+                avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
+                total_h = max(320, avail_bot - avail_top)
+                caption_reserve = max(130, min(200, int(total_h * 0.30)))
+                chart_h = max(240, total_h - caption_reserve - 12)
+                layout_configs = [{"x": base_x, "y": avail_top, "w": usable_w, "h": chart_h}]
+                immersive_chart_right = None
+            elif dual_chart_with_text:
+                base_x = int(layout_x or content_x or margin) + margin
+                usable_w = max(720, int(layout_w or content_w or main_area_w) - margin * 2)
+                text_col_w = max(380, min(520, int(usable_w * 0.42)))
+                charts_col_w = max(440, usable_w - text_col_w - 14)
+                avail_top = int(top_reserved_h_for_scene or start_y) + 8
+                avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
+                total_h = max(300, avail_bot - avail_top)
+                chart_gap = 10
+                slot_h = max(180, (total_h - chart_gap) // 2)
+                layout_configs = [
+                    {"x": base_x, "y": avail_top, "w": charts_col_w, "h": slot_h},
+                    {
+                        "x": base_x,
+                        "y": avail_top + slot_h + chart_gap,
+                        "w": charts_col_w,
+                        "h": slot_h,
+                    },
+                ]
+                immersive_chart_right = base_x + charts_col_w
+                immersive_chart_top = avail_top
+                immersive_chart_h = total_h
             for idx, img_name in enumerate(target_files):
                 if idx >= len(layout_configs): break
                 conf = layout_configs[idx]
@@ -1790,15 +2026,7 @@ def render_scenes_to_video(
                             or ("kessan_schedule" in img_name_l)
                             or ("soukai_schedule" in img_name_l)
                         )
-                        is_chart = (
-                            (
-                                str(sc.get("image_type", "")).startswith("chart")
-                                or "chart" in img_name_l
-                                or "stock_charts" in img_name_l.replace("\\", "/")
-                                or "market_charts" in img_name_l.replace("\\", "/")
-                            )
-                            and (not diagram_only)
-                        )
+                        is_chart = _path_looks_like_chart(str(visual_path or img_name), sc)
                         # 図解は横幅優先。チャート横並びは後段で左列に contain（先に全体へ縮めない）
                         skip_pre_fit = bool(
                             (not is_shorts) and use_immersive and is_chart and chart_side_by_side
@@ -1852,18 +2080,38 @@ def render_scenes_to_video(
                                 )
                             max_main_h = max(120, avail_bot - avail_top)
                             if is_chart and chart_side_by_side:
-                                chart_col_w = max(280, int(conf["w"] * 0.55))
-                                scale = min(
-                                    chart_col_w / max(v_clip.w, 1),
-                                    max_main_h / max(v_clip.h, 1),
-                                )
-                                v_clip = v_clip.resized(scale)
-                                pos_x = int(conf["x"])
-                                leftover = max(0, avail_bot - avail_top - int(v_clip.h))
-                                pos_y = avail_top + leftover // 5
-                                immersive_chart_right = int(pos_x + v_clip.w)
-                                immersive_chart_top = int(pos_y)
-                                immersive_chart_h = int(v_clip.h)
+                                if dual_chart_with_text:
+                                    scale = min(
+                                        conf["w"] / max(v_clip.w, 1),
+                                        conf["h"] / max(v_clip.h, 1),
+                                    )
+                                    v_clip = v_clip.resized(scale)
+                                    pos_x = conf["x"] + max(0, (conf["w"] - v_clip.w) // 2)
+                                    pos_y = conf["y"] + max(0, (conf["h"] - v_clip.h) // 2)
+                                elif single_chart_with_text:
+                                    scale = min(
+                                        conf["w"] / max(v_clip.w, 1),
+                                        conf["h"] / max(v_clip.h, 1),
+                                    )
+                                    v_clip = v_clip.resized(scale)
+                                    pos_x = conf["x"] + max(0, (conf["w"] - v_clip.w) // 2)
+                                    pos_y = conf["y"] + max(0, (conf["h"] - v_clip.h) // 2)
+                                    immersive_chart_right = None
+                                    immersive_chart_top = int(pos_y)
+                                    immersive_chart_h = int(v_clip.h)
+                                else:
+                                    chart_col_w = max(280, int(conf["w"] * 0.55))
+                                    scale = min(
+                                        chart_col_w / max(v_clip.w, 1),
+                                        max_main_h / max(v_clip.h, 1),
+                                    )
+                                    v_clip = v_clip.resized(scale)
+                                    pos_x = int(conf["x"])
+                                    leftover = max(0, avail_bot - avail_top - int(v_clip.h))
+                                    pos_y = avail_top + leftover // 5
+                                    immersive_chart_right = int(pos_x + v_clip.w)
+                                    immersive_chart_top = int(pos_y)
+                                    immersive_chart_h = int(v_clip.h)
                             elif is_chart:
                                 scale = min(
                                     conf["w"] / max(v_clip.w, 1),
@@ -2196,7 +2444,7 @@ def render_scenes_to_video(
             except Exception as e:
                 print(f"[WARN] 要約テキスト生成失敗: {e}")
 
-        # immersive: チャート左・要約右（要約なしチャートは従来どおり下キャプションなし）
+        # immersive: 1枚チャート=上下、2枚チャート=左縦並び+右要約
         if (
             (not is_shorts)
             and use_immersive
@@ -2205,15 +2453,54 @@ def render_scenes_to_video(
         ):
             try:
                 font_path_s = font_to_use if isinstance(font_to_use, str) else None
-                side_layout = immersive_chart_right is not None
+                side_layout = bool(dual_chart_with_text and immersive_chart_right is not None)
+                below_layout = bool(single_chart_with_text)
                 if side_layout:
-                    gap = 14
+                    gap = 12
                     right_x = int(immersive_chart_right) + gap
                     right_max = int((content_x or 0) + (content_w or size[0]) - 8)
-                    cap_w_max = max(300, right_max - right_x)
-                    cap_font_sz = 24
+                    cap_w_max = max(340, right_max - right_x)
+                    # 長文が含まれる場合は 40px、短ければ 44px に調整して変な改行を防ぐ
+                    max_line_len = max(len(str(ln)) for ln in chart_caption_lines[:4]) if chart_caption_lines else 0
+                    cap_font_sz = 40 if max_line_len >= 14 else 44
                     wrap_font = _pil_font(font_path_s, cap_font_sz)
-                    wrap_px = max(140, cap_w_max - 44)
+                    wrap_px = max(160, cap_w_max - 40)
+                    wrapped: List[str] = []
+                    for src in chart_caption_lines[:4]:
+                        pages, _rest = _paginate_text_px(
+                            src, wrap_font, wrap_px, max_lines=2, ellipsis=False
+                        )
+                        if pages:
+                            wrapped.extend(ln for ln in pages[0] if str(ln).strip())
+                    if not wrapped:
+                        wrapped = chart_caption_lines[:4]
+                    chart_h = int(immersive_chart_h or 0)
+                    tip_clip, tip_w, tip_h = _render_summary_band_clip(
+                        wrapped,
+                        font_path=font_path_s,
+                        max_width=cap_w_max,
+                        fill_rgb=ink_color(),
+                        duration=total_scene_duration,
+                        start=cumulative_time,
+                        font_size=cap_font_sz,
+                        force_width=cap_w_max,
+                        pad_x=20,
+                        pad_y=28,
+                        min_height=max(180, int(chart_h * 0.90)) if chart_h else 0,
+                        align="left",
+                    )
+                    tip_x = right_x
+                    tip_y = int(immersive_chart_top or 0) + max(0, (chart_h - tip_h) // 2)
+                    max_tip_y = size[1] - int(bottom_reserved_h or 140) - tip_h - 8
+                    tip_y = max(int(immersive_chart_top or 0), min(tip_y, max_tip_y))
+                elif below_layout:
+                    cap_w_max = max(
+                        560,
+                        min(int(content_w or main_area_w) - 48, int((content_w or size[0]) * 0.88)),
+                    )
+                    cap_font_sz = 34
+                    wrap_font = _pil_font(font_path_s, cap_font_sz)
+                    wrap_px = max(200, cap_w_max - 48)
                     wrapped: List[str] = []
                     for src in chart_caption_lines[:4]:
                         pages, _rest = _paginate_text_px(
@@ -2232,14 +2519,13 @@ def render_scenes_to_video(
                         start=cumulative_time,
                         font_size=cap_font_sz,
                         force_width=cap_w_max,
-                        pad_x=22,
+                        pad_x=26,
                         align="left",
                     )
-                    tip_x = right_x
-                    chart_h = int(immersive_chart_h or tip_h)
-                    tip_y = int(immersive_chart_top or 0) + max(0, (chart_h - tip_h) // 2)
+                    tip_x = int(content_x or margin) + max(0, ((content_w or main_area_w) - tip_w) // 2)
+                    tip_y = int(immersive_chart_bottom) + 14
                     max_tip_y = size[1] - int(bottom_reserved_h or 140) - tip_h - 8
-                    tip_y = max(int(immersive_chart_top or 0), min(tip_y, max_tip_y))
+                    tip_y = max(int(immersive_chart_top or top_reserved_h_for_scene or start_y), min(tip_y, max_tip_y))
                 else:
                     cap_w_max = max(400, int(telop_w or (content_w or size[0] * 0.55)) - 8)
                     tip_clip, tip_w, tip_h = _render_summary_band_clip(
@@ -2289,11 +2575,37 @@ def render_scenes_to_video(
                     plate_x = int(content_x or margin)
                     plate_w = int(content_w or main_area_w)
                     max_w = max(520, plate_w - 40)
-                    if is_opening and focus_lines:
+                    density = float(sc.get("_immersive_density") or 0.0)
+                    avail_top = int(base_top) + (12 if is_opening else 16)
+                    avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
+                    if density >= 0.9 and char_visible_h and (not is_opening):
+                        avail_bot = min(avail_bot, size[1] - int(char_visible_h * 0.82) - 10)
+                    max_main_h = max(120, avail_bot - avail_top)
+                    use_topics_card = is_opening or (
+                        (not ticker and not company)
+                        and _lines_have_category_markers(focus_lines)
+                    )
+                    use_bullet_panel = bool(
+                        (not use_topics_card)
+                        and (not ticker)
+                        and (not company)
+                        and focus_lines
+                    )
+                    if use_topics_card and focus_lines:
                         focus_clip, fw, fh = _render_opening_topics_clip(
                             lines=focus_lines,
                             font_path=font_to_use if isinstance(font_to_use, str) else None,
                             max_width=max_w,
+                            duration=total_scene_duration,
+                            start=cumulative_time,
+                        )
+                    elif use_bullet_panel:
+                        focus_clip, fw, fh = _render_immersive_bullet_clip(
+                            lines=focus_lines,
+                            section_title=str(sc.get("section_title") or ""),
+                            font_path=font_to_use if isinstance(font_to_use, str) else None,
+                            max_width=max_w,
+                            avail_height=max_main_h,
                             duration=total_scene_duration,
                             start=cumulative_time,
                         )
@@ -2310,12 +2622,6 @@ def render_scenes_to_video(
                         )
                     fx = plate_x + max(0, (plate_w - fw) // 2)
                     # 画面中央寄り。密度高のときはキャラ／テロップ帯を避けて収める
-                    density = float(sc.get("_immersive_density") or 0.0)
-                    avail_top = int(base_top) + (12 if is_opening else 16)
-                    avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
-                    if density >= 0.9 and char_visible_h and (not is_opening):
-                        avail_bot = min(avail_bot, size[1] - int(char_visible_h * 0.82) - 10)
-                    max_main_h = max(120, avail_bot - avail_top)
                     if fh > max_main_h:
                         # フォーカスカードは縮小（中身優先で高さ制限）
                         focus_clip = focus_clip.resized(height=max_main_h)
@@ -2325,6 +2631,8 @@ def render_scenes_to_video(
                     screen_mid = max(avail_top, size[1] // 2 - fh // 2 + (8 if is_opening else 20))
                     if is_opening:
                         fy = int(0.2 * band_mid + 0.8 * screen_mid)
+                    elif use_topics_card or use_bullet_panel:
+                        fy = int(0.15 * band_mid + 0.85 * screen_mid)
                     else:
                         fy = int(0.35 * band_mid + 0.65 * screen_mid)
                     fy = max(avail_top, min(fy, avail_bot - fh))

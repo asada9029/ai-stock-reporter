@@ -7,6 +7,7 @@
   python scripts/preview_latest_fixes.py
   python scripts/preview_latest_fixes.py --diagrams-only
   python scripts/preview_latest_fixes.py --layout-only
+  python scripts/preview_latest_fixes.py --layout-only --matrix
 """
 
 from __future__ import annotations
@@ -163,6 +164,17 @@ def preview_diagrams_from_data() -> int:
     return 0
 
 
+def preview_layout_matrix(draft: bool = False) -> int:
+    cmd = [
+        sys.executable,
+        str(ROOT / "scripts/preview_layout_matrix.py"),
+    ]
+    if draft:
+        cmd.append("--draft")
+    print("[Run]", " ".join(cmd))
+    return subprocess.call(cmd, cwd=str(ROOT))
+
+
 def preview_layout_clips(draft: bool = True) -> int:
     scenes = _latest("data/scripts/scenes_*.json")
     out = ROOT / "output" / "fix_preview" / "layout_check.mp4"
@@ -238,12 +250,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="修正点の軽量プレビュー")
     parser.add_argument("--diagrams-only", action="store_true")
     parser.add_argument("--layout-only", action="store_true")
+    parser.add_argument(
+        "--matrix",
+        action="store_true",
+        help="文字量×チャート枚数のレイアウトマトリクス（1080p推奨）",
+    )
     parser.add_argument("--full-res", action="store_true", help="720p draft をやめて 1080p")
     args = parser.parse_args()
 
     rc = 0
     if args.layout_only:
-        rc = preview_layout_clips(draft=not args.full_res)
+        if args.matrix:
+            rc = preview_layout_matrix(draft=not args.full_res)
+        else:
+            rc = preview_layout_clips(draft=not args.full_res)
     elif args.diagrams_only:
         rc = preview_diagrams_from_data()
     else:
