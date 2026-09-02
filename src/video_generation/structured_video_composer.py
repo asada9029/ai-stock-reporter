@@ -560,8 +560,41 @@ def _paginate_text_px(
 
 
 def _caption_font_size(screen_h: int) -> int:
-    """720p で 36、1080p で 44。"""
-    return max(36, min(44, int(round(screen_h * 0.05))))
+    """720p で 40、1080p で 48。"""
+    return max(40, min(48, int(round(screen_h * 0.044))))
+
+
+def _is_opening_scene(sc: dict) -> bool:
+    sec = str(sc.get("section_title") or "")
+    return ("opening" in sec.lower()) or ("トピック" in sec)
+
+
+def _parse_opening_topic_line(line: str) -> Tuple[str, str]:
+    """「・東京市場：円高警戒」→ (タグ, 本文)。"""
+    s = str(line or "").strip().lstrip("・•").strip()
+    for sep in ("：", ":"):
+        if sep in s:
+            tag, body = s.split(sep, 1)
+            return tag.strip()[:8], body.strip()
+    return "トピック", s
+
+
+def _opening_tag_color(tag: str) -> Tuple[int, int, int]:
+    t = str(tag or "").strip()
+    palette = {
+        "東京市場": (47, 78, 122),
+        "市場": (47, 78, 122),
+        "米国": (47, 78, 122),
+        "注目": (196, 78, 88),
+        "材料": (70, 150, 110),
+        "セクター": (120, 90, 170),
+        "今夜": (70, 110, 150),
+        "チェック": (200, 130, 55),
+    }
+    for key, rgb in palette.items():
+        if key in t:
+            return rgb
+    return STUDIO_SOFT["soft_blue"]  # type: ignore[return-value]
 
 
 def _is_spoken_filler_line(text: str) -> bool:
@@ -873,8 +906,8 @@ def _render_caption_band_clip(
         line_hs.append(bb[3] - bb[1])
     while len(line_hs) < 2:
         line_hs.append(int(font_size * 1.35))
-    pad_y = 22
-    two_line_h = pad_y * 2 + sum(line_hs[:2]) + line_gap + 10
+    pad_y = 28
+    two_line_h = pad_y * 2 + sum(line_hs[:2]) + line_gap + 14
     return _render_summary_band_clip(
         lines,
         font_path=font_path,
@@ -988,6 +1021,125 @@ def _load_rgba_image_clip(path: Path) -> ImageClip:
     rgb = ImageClip(arr[:, :, :3])
     mask = ImageClip(arr[:, :, 3].astype("float") / 255.0, is_mask=True)
     return rgb.with_mask(mask)
+
+
+def _render_opening_topics_clip(
+    *,
+    lines: List[str],
+    font_path: Optional[str],
+    max_width: int,
+    duration: float,
+    start: float,
+) -> Tuple[ImageClip, int, int]:
+    """opening「本日のトピック」専用。カテゴリタグ付きで視認性を上げる。"""
+    clean_lines = [str(x).strip() for x in lines if str(x).strip()][:5]
+    ink = ink_color()
+    cream = STUDIO_SOFT["surface_cream_solid"]
+    blue = STUDIO_SOFT["soft_blue"]
+    tag_font = _pil_font(font_path, 32)
+    body_font = _pil_font(font_path, 46)
+
+    tmp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    td = ImageDraw.Draw(tmp)
+
+    def _m(text: str, font) -> Tuple[int, int, Tuple[int, int, int, int]]:
+        bb = td.textbbox((0, 0), text, font=font)
+        return bb[2] - bb[0], bb[3] - bb[1], bb
+
+    pad_x, pad_y = 44, 42
+    tag_w = 172
+    tag_pad_x, tag_pad_y = 16, 12
+    row_gap = 20
+    body_x = pad_x + tag_w + 20
+    wrap_w = max(260, int(max_width) - body_x - pad_x)
+
+    rows: List[Tuple[str, str, List[str], int]] = []
+    total_h = pad_y
+    max_body_w = 0
+    for ln in clean_lines:
+        tag, body = _parse_opening_topic_line(ln)
+        wrapped = _wrap_text_to_px(body, body_font, wrap_w, max_lines=2, ellipsis=False)
+        block_h = 0
+        for wln in wrapped:
+            _, lh, _ = _m(wln, body_font)
+            block_h += lh + 6
+        if wrapped:
+            block_h -= 6
+        _, tag_h, _ = _m(tag[:8], tag_font)
+        row_h = max(tag_h + tag_pad_y * 2, block_h, 56)
+        rows.append((tag, body, wrapped, row_h))
+        max_body_w = max(max_body_w, wrap_w)
+        total_h += row_h + row_gap
+    if rows:
+        total_h -= row_gap
+    total_h += pad_y
+
+    w = int(max_width)
+    h = max(360, total_h)
+
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle(
+        (6, 10, w - 2, h - 2),
+        radius=30,
+        fill=(44, 36, 32, int(STUDIO_SOFT.get("panel_shadow_alpha", 72))),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(12))
+    img = Image.alpha_composite(img, shadow)
+    draw = ImageDraw.Draw(img)
+    outline = STUDIO_SOFT.get("panel_outline", (*blue, 200))
+    draw.rounded_rectangle(
+        (2, 2, w - 6, h - 6),
+        radius=28,
+        fill=(*cream, int(STUDIO_SOFT.get("panel_cream_alpha", 250))),
+        outline=outline if isinstance(outline, tuple) else (*blue, 200),
+        width=3,
+    )
+    draw.rounded_rectangle(
+        (2, 2, 14, h - 6),
+        radius=8,
+        fill=(*blue, 220),
+    )
+
+    y = pad_y
+    for tag, _body, wrapped, row_h in rows:
+        tag_rgb = _opening_tag_color(tag)
+        pill_h = max(52, row_h - 4)
+        draw.rounded_rectangle(
+            (pad_x, y + (row_h - pill_h) // 2, pad_x + tag_w, y + (row_h - pill_h) // 2 + pill_h),
+            radius=16,
+            fill=(*tag_rgb, 255),
+        )
+        _, tag_h, tag_bb = _m(tag[:8], tag_font)
+        tag_cy = y + row_h // 2
+        try:
+            draw.text(
+                (pad_x + tag_w // 2, tag_cy),
+                tag[:8],
+                font=tag_font,
+                fill=(255, 255, 255, 255),
+                anchor="mm",
+            )
+        except TypeError:
+            draw.text(
+                (pad_x + tag_pad_x, tag_cy - tag_h // 2 - tag_bb[1]),
+                tag[:8],
+                font=tag_font,
+                fill=(255, 255, 255, 255),
+            )
+
+        text_y = y + max(0, (row_h - sum(_m(wln, body_font)[1] + 6 for wln in wrapped) + 6) // 2)
+        for wln in wrapped:
+            _, lh, bb = _m(wln, body_font)
+            try:
+                draw.text((body_x, text_y + lh // 2), wln, font=body_font, fill=(*ink, 255), anchor="lm")
+            except TypeError:
+                draw.text((body_x, text_y - bb[1]), wln, font=body_font, fill=(*ink, 255))
+            text_y += lh + 6
+        y += row_h + row_gap
+
+    return _rgba_image_clip(img, duration=duration, start=start), w, h
 
 
 def _render_news_focus_clip(
@@ -1346,8 +1498,8 @@ def render_scenes_to_video(
             telop_x, telop_w = immersive_telop_box(size)
             cap_font = _caption_font_size(size[1])
             # 2行字幕 + 下余白。チャート要約はこの上に別枠で確保する
-            caption_slot_h = 40 + cap_font * 2 + max(8, cap_font // 5) + 16
-            bottom_reserved_h = max(caption_slot_h + 12, int(char_visible_h * 0.42) + 24)
+            caption_slot_h = 52 + cap_font * 2 + max(10, cap_font // 4) + 28
+            bottom_reserved_h = max(caption_slot_h + 32, int(char_visible_h * 0.42) + 32)
         else:
             content_x, content_w = None, None
             bottom_reserved_h = None
@@ -1412,15 +1564,21 @@ def render_scenes_to_video(
         if (not is_shorts) and section_title and section_title != "subscribe":
             try:
                 if use_immersive:
-                    # 情報量が多いときだけタイトルをコンパクト化（通常時は現状維持）
+                    # 情報量が多いときだけタイトルをコンパクト化（opening は大きめ固定）
                     tfs_early = sc.get("target_files") or []
                     has_chart_early = bool(tfs_early) or str(sc.get("image_type", "")).startswith(
                         "chart"
                     )
+                    is_opening_title = ("トピック" in section_title) or (
+                        "opening" in section_title.lower()
+                    )
                     density = immersive_density_score(sc, has_chart=has_chart_early)
-                    title_scale = 0.84 if has_chart_early else 0.92
-                    if density >= 0.75:
-                        title_scale = max(0.72, title_scale - (density - 0.7) * 0.25)
+                    if is_opening_title:
+                        title_scale = 1.1
+                    else:
+                        title_scale = 0.84 if has_chart_early else 0.92
+                        if density >= 0.75:
+                            title_scale = max(0.72, title_scale - (density - 0.7) * 0.25)
                     max_w = max(520, (content_w or int(size[0] * 0.72)) - 16)
                     title_pill, frame_w, frame_h = _render_title_pill_clip(
                         section_title,
@@ -1431,7 +1589,10 @@ def render_scenes_to_video(
                         scale=title_scale,
                     )
                     frame_x = (content_x or 0) + max(0, ((content_w or size[0]) - frame_w) // 2)
-                    frame_y = 56 if title_scale >= 0.88 else max(32, int(56 - (0.92 - title_scale) * 80))
+                    if is_opening_title:
+                        frame_y = 44
+                    else:
+                        frame_y = 56 if title_scale >= 0.88 else max(32, int(56 - (0.92 - title_scale) * 80))
                     all_clips.append(title_pill.with_position((frame_x, frame_y)))
                     top_reserved_h_for_scene = frame_y + frame_h + 12
                     # 後段（メイン配置）でタイトル／テロップ／キャラに被らないよう参照
@@ -2112,12 +2273,10 @@ def render_scenes_to_video(
                 s = str(t).strip()
                 if s and not _is_spoken_filler_line(s):
                     focus_lines.append(s)
-            # 文字中心は最低3行・最大5行まで厚くする（openingは4行以上）
-            sec = str(sc.get("section_title") or "")
-            is_opening = ("opening" in sec.lower()) or ("トピック" in sec)
+            is_opening = _is_opening_scene(sc)
             focus_lines = _densify_on_screen_lines(
                 sc,
-                min_lines=3 if is_opening else 3,
+                min_lines=4 if is_opening else 3,
                 max_lines=5,
             )
             if ticker or company or focus_lines:
@@ -2130,22 +2289,31 @@ def render_scenes_to_video(
                     plate_x = int(content_x or margin)
                     plate_w = int(content_w or main_area_w)
                     max_w = max(520, plate_w - 40)
-                    focus_clip, fw, fh = _render_news_focus_clip(
-                        ticker=ticker,
-                        company=company,
-                        lines=focus_lines,
-                        font_path=font_to_use if isinstance(font_to_use, str) else None,
-                        max_width=max_w,
-                        duration=total_scene_duration,
-                        start=cumulative_time,
-                        min_height=0,
-                    )
+                    if is_opening and focus_lines:
+                        focus_clip, fw, fh = _render_opening_topics_clip(
+                            lines=focus_lines,
+                            font_path=font_to_use if isinstance(font_to_use, str) else None,
+                            max_width=max_w,
+                            duration=total_scene_duration,
+                            start=cumulative_time,
+                        )
+                    else:
+                        focus_clip, fw, fh = _render_news_focus_clip(
+                            ticker=ticker,
+                            company=company,
+                            lines=focus_lines,
+                            font_path=font_to_use if isinstance(font_to_use, str) else None,
+                            max_width=max_w,
+                            duration=total_scene_duration,
+                            start=cumulative_time,
+                            min_height=0,
+                        )
                     fx = plate_x + max(0, (plate_w - fw) // 2)
                     # 画面中央寄り。密度高のときはキャラ／テロップ帯を避けて収める
                     density = float(sc.get("_immersive_density") or 0.0)
-                    avail_top = int(base_top) + 16
+                    avail_top = int(base_top) + (12 if is_opening else 16)
                     avail_bot = size[1] - int(bottom_reserved_h or 168) - 16
-                    if density >= 0.9 and char_visible_h:
+                    if density >= 0.9 and char_visible_h and (not is_opening):
                         avail_bot = min(avail_bot, size[1] - int(char_visible_h * 0.82) - 10)
                     max_main_h = max(120, avail_bot - avail_top)
                     if fh > max_main_h:
@@ -2154,8 +2322,11 @@ def render_scenes_to_video(
                         fw, fh = int(focus_clip.w), int(focus_clip.h)
                         fx = plate_x + max(0, (plate_w - fw) // 2)
                     band_mid = avail_top + max(0, (avail_bot - avail_top - fh) // 2)
-                    screen_mid = max(avail_top, size[1] // 2 - fh // 2 + 20)
-                    fy = int(0.35 * band_mid + 0.65 * screen_mid)
+                    screen_mid = max(avail_top, size[1] // 2 - fh // 2 + (8 if is_opening else 20))
+                    if is_opening:
+                        fy = int(0.2 * band_mid + 0.8 * screen_mid)
+                    else:
+                        fy = int(0.35 * band_mid + 0.65 * screen_mid)
                     fy = max(avail_top, min(fy, avail_bot - fh))
                     focus_clip = focus_clip.with_position((fx, fy))
                     if video_cross > 0:
@@ -2405,7 +2576,7 @@ def render_scenes_to_video(
                                 font_size=cap_font,
                                 lines=page_lines,
                             )
-                            ty = size[1] - cap_h - 10
+                            ty = size[1] - cap_h - 36
                             tx = corridor_x + max(0, (corridor_w - cap_w) // 2)
                             all_clips.append(cap_clip.with_position((tx, ty)))
                     else:
