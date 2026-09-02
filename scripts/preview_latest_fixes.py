@@ -20,8 +20,61 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-# 今回の修正確認に効く代表シーン（前回朝動画の構成）
+# 今回の修正確認に効く代表シーン（opening を必ず含める）
 KEY_SCENES = "1,6,7,9,13"
+
+
+def _find_opening_scene_number(scenes_path: Path) -> int | None:
+    try:
+        data = json.loads(scenes_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    for sc in data:
+        if not isinstance(sc, dict):
+            continue
+        title = str(sc.get("section_title") or "")
+        if "トピック" in title or "opening" in title.lower():
+            num = sc.get("scene")
+            if isinstance(num, int):
+                return num
+    return None
+
+
+def _production_like_opening_scene() -> dict:
+    """本番 opening に近い固定フィクスチャ（台本JSONが無いとき用）。"""
+    return {
+        "scene": 0,
+        "section_title": "本日のトピック",
+        "duration": 8.0,
+        "text": "みなさん、こんにちは。株野みのりです。",
+        "speech_text": "みなさん、こんにちは。かぶのみのりです。",
+        "on_screen_text": [
+            "・市場：ベッセント発言で円高警戒",
+            "・注目：【スクエニHD急伸】非公開化思惑",
+            "・材料：デルタフライ・ブレインズ買われる",
+            "・セクター：電力・エネルギーへ資金集中",
+            "・今夜：米8月ISM景況感・JOLTS注目",
+        ],
+        "emotion": "happy",
+        "image_type": "character_only",
+        "bg_name": "bg_illust.png",
+        "target_files": [],
+        "speaker": "minori",
+        "segments": [
+            {
+                "text": "みなさん、本日もお疲れ様です。",
+                "duration": 2.5,
+                "start": 0.3,
+                "speaker": "minori",
+            },
+            {
+                "text": "株野みのりです。",
+                "duration": 1.8,
+                "start": 2.9,
+                "speaker": "minori",
+            },
+        ],
+    }
 
 
 def _latest(path_glob: str) -> Path | None:
@@ -112,25 +165,49 @@ def preview_diagrams_from_data() -> int:
 
 def preview_layout_clips(draft: bool = True) -> int:
     scenes = _latest("data/scripts/scenes_*.json")
-    if not scenes:
-        print("[NG] data/scripts/scenes_*.json がありません")
-        return 1
-
     out = ROOT / "output" / "fix_preview" / "layout_check.mp4"
-    cmd = [
-        sys.executable,
-        str(ROOT / "test_render_cached_preview.py"),
-        "--scenes-json",
-        str(scenes.relative_to(ROOT)),
-        "--scene-numbers",
-        KEY_SCENES,
-        "--scene-duration",
-        "3",
-        "--presentation",
-        "immersive",
-        "--out",
-        str(out.relative_to(ROOT)),
-    ]
+
+    if scenes:
+        opening_num = _find_opening_scene_number(scenes)
+        parts = [p.strip() for p in KEY_SCENES.split(",") if p.strip()]
+        if opening_num is not None and str(opening_num) not in parts:
+            parts.insert(0, str(opening_num))
+        scene_numbers = ",".join(dict.fromkeys(parts))
+        cmd = [
+            sys.executable,
+            str(ROOT / "test_render_cached_preview.py"),
+            "--scenes-json",
+            str(scenes.relative_to(ROOT)),
+            "--scene-numbers",
+            scene_numbers,
+            "--scene-duration",
+            "3",
+            "--presentation",
+            "immersive",
+            "--out",
+            str(out.relative_to(ROOT)),
+        ]
+    else:
+        print("[WARN] scenes_*.json なし → opening 固定フィクスチャでプレビュー")
+        fixture_path = ROOT / "output" / "fix_preview" / "opening_fixture.json"
+        fixture_path.parent.mkdir(parents=True, exist_ok=True)
+        fixture_path.write_text(
+            json.dumps([_production_like_opening_scene()], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        cmd = [
+            sys.executable,
+            str(ROOT / "test_render_cached_preview.py"),
+            "--scenes-json",
+            str(fixture_path.relative_to(ROOT)),
+            "--scene-duration",
+            "5",
+            "--presentation",
+            "immersive",
+            "--out",
+            str(out.relative_to(ROOT)),
+        ]
+
     if draft:
         cmd.append("--draft")
     print("[Run]", " ".join(cmd))
