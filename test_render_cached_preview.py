@@ -195,9 +195,27 @@ def main() -> None:
         print(f"[Preview] 指定シーンのみ: {args.scene_numbers} -> {len(scenes)} シーン")
 
     hydrated = 0
+    from src.analysis.japanese_text import (
+        is_mostly_english_display,
+        normalize_scenes_japanese_display,
+        prefer_japanese_display,
+    )
+
+    n_ja = normalize_scenes_japanese_display(scenes)
+    if n_ja:
+        print(f"[JA] 表示テキストを日本語寄りに正規化: {n_ja} シーン")
+
     for i, sc in enumerate(scenes):
         if _hydrate_preview_segments(sc):
             hydrated += 1
+        # 既存 segments の英語テロップも保険で差し替え
+        speech = str(sc.get("speech_text") or "")
+        for seg in sc.get("segments") or []:
+            if not isinstance(seg, dict):
+                continue
+            seg_text = str(seg.get("text") or "")
+            if is_mostly_english_display(seg_text):
+                seg["text"] = prefer_japanese_display(seg_text, speech) or speech or seg_text
         if args.scene_duration > 0:
             sc["duration"] = float(args.scene_duration)
             segs = sc.get("segments") or []

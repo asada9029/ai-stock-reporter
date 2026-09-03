@@ -262,6 +262,13 @@ def compose_video_from_analysis(
             presentation_mode=presentation_mode,
         )
 
+    # 既存台本でも英語テロップ事故を防ぐ（表示 text → speech_text フォールバック）
+    from src.analysis.japanese_text import normalize_scenes_japanese_display
+
+    n_ja = normalize_scenes_japanese_display(scenes)
+    if n_ja:
+        print(f"[JA] 表示テキストを日本語寄りに正規化: {n_ja} シーン")
+
     # --- 2.5. セクションブリッジ（任意・デフォルトOFF。USE_SECTION_BRIDGES=1 のときのみ） ---
     if (
         os.getenv("USE_SECTION_BRIDGES", "").strip().lower() in ("1", "true", "yes")
@@ -476,7 +483,11 @@ def compose_video_from_analysis(
 
             for unit in speech_units:
                 unit_speech = unit.get("speech_text") or ""
-                unit_display = unit.get("text") or unit_speech
+                from src.analysis.japanese_text import prefer_japanese_display
+
+                unit_display = prefer_japanese_display(
+                    unit.get("text") or "", unit_speech
+                ) or unit_speech
                 unit_speaker = unit.get("speaker") or "minori"
                 voice_id = resolve_voicevox_id(unit_speaker)
                 speech_segments, display_segments = _split_text_segments_aligned(
