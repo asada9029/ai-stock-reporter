@@ -33,6 +33,8 @@ def expand_scene_speech_units(scene: Dict) -> List[Dict[str, Any]]:
     各要素: {speaker, text, speech_text}
     dialogue があればそれを優先。なければ scene 単位。
     """
+    from src.analysis.japanese_text import prefer_japanese_display
+
     dialogue = scene.get("dialogue")
     units: List[Dict[str, Any]] = []
     if isinstance(dialogue, list) and dialogue:
@@ -43,24 +45,26 @@ def expand_scene_speech_units(scene: Dict) -> List[Dict[str, Any]]:
             speech = str(line.get("speech_text") or text).strip()
             if not speech and not text:
                 continue
+            display = prefer_japanese_display(text, speech)
             units.append(
                 {
                     "speaker": normalize_speaker_id(line.get("speaker"), scene.get("speaker") or "minori"),
-                    "text": text or speech,
+                    "text": display or speech,
                     "speech_text": speech or text,
                 }
             )
-    if units:
-        return units
+        if units:
+            return units
 
     text = str(scene.get("text") or "").strip()
     speech = str(scene.get("speech_text") or text).strip()
-    if not speech and not text:
+    display = prefer_japanese_display(text, speech)
+    if not speech and not display:
         return []
     return [
         {
             "speaker": normalize_speaker_id(scene.get("speaker"), "minori"),
-            "text": text or speech,
+            "text": display or speech,
             "speech_text": speech or text,
         }
     ]

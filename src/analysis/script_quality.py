@@ -151,6 +151,15 @@ def evaluate_script_quality(
     if missing:
         issues.append(f"必須セクション欠落: {', '.join(missing)}")
 
+    try:
+        from src.analysis.japanese_text import count_english_display_issues
+
+        en_count, en_issues = count_english_display_issues(scene_list)
+        if en_count > 0:
+            issues.append(f"英語表示が残存（{en_count}件）: {'; '.join(en_issues[:3])}")
+    except Exception:
+        pass
+
     passed = not issues
     return ScriptQualityReport(
         passed=passed,
