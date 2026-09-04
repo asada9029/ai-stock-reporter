@@ -2548,7 +2548,16 @@ def render_scenes_to_video(
                 print(f"[WARN] chart caption failed: {e}")
 
         # --- 4.5. immersive: チャート無しニュースの中央フォーカス（中身サイズ＋縦中央） ---
-        if (not is_shorts) and use_immersive and (not target_files):
+        # subscribe / ブリッジ（章頭カード）では要約カードを出さない
+        is_subscribe_scene = str(sc.get("section_title") or "") == "subscribe"
+        is_bridge_scene = bool(sc.get("visual_template") == "bridge" or sc.get("mute"))
+        if (
+            (not is_shorts)
+            and use_immersive
+            and (not target_files)
+            and (not is_subscribe_scene)
+            and (not is_bridge_scene)
+        ):
             ticker = str(sc.get("ticker") or sc.get("related_ticker") or "").strip()
             company = str(sc.get("company_name") or sc.get("related_company_name") or "").strip()
             focus_lines: List[str] = []
