@@ -85,13 +85,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY_SEARCH: ${{ secrets.GEMINI_API_KEY_SEARCH }}
           TOKEN_JSON_BASE64: ${{ secrets.TOKEN_JSON_BASE64 }}
-          # セクション切替ブリッジは既定OFF（章頭カードが本編に混ざると紛らわしいため）
-          # 使う場合のみ USE_SECTION_BRIDGES=1 を戻す
-          USE_SECTION_BRIDGES: "0"
+          # セクション切替ブリッジON（章頭カード。要約カードが乗らないよう composer 側で除外済み）
+          USE_SECTION_BRIDGES: "1"
           DEBUG: "False"
           TZ: 'Asia/Tokyo'
         run: |
-          # 横型本編は immersive（短い画面ラベル・セクションSE）
+          # ブリッジ画像の生成
+          python generate_bridge_images.py --all
+          # 横型本編は immersive（短い画面ラベル・セクションSE・ブリッジ）
           python main.py --type ${{ steps.video-type.outputs.type }} --presentation immersive
 
       - name: Run Shorts A Pipeline and Upload
