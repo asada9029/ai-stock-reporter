@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-17T07:11:09.399156",
-    "video_type": "morning_video",
-    "title": "【スペースX買収】巨大テックに猛追の衝撃"
-  },
-  {
     "date": "2026-06-17T20:30:09.908892",
     "video_type": "evening_video",
     "title": "【トヨタ全固体電池】量産前倒しでEV相場が激変"
@@ -498,5 +493,10 @@
     "date": "2026-09-08T20:51:34.719234",
     "video_type": "evening_video",
     "title": "【ヴィッツストップ高】Go-Tech採択の全貌"
+  },
+  {
+    "date": "2026-09-09T07:10:53.869280",
+    "video_type": "morning_video",
+    "title": "【インテル9%高】半導体株の逆行高とAI供給網の限界"
   }
 ]
