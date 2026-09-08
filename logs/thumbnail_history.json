@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-16T21:04:42.100144",
-    "video_type": "evening_video",
-    "title": "【日経平均3384円高】激震の相場変動"
-  },
-  {
     "date": "2026-06-17T07:11:09.399156",
     "video_type": "morning_video",
     "title": "【スペースX買収】巨大テックに猛追の衝撃"
@@ -498,5 +493,10 @@
     "date": "2026-09-07T22:13:13.306099",
     "video_type": "evening_video",
     "title": "【豊和工業ストップ高】産業用ドローン連携の全貌"
+  },
+  {
+    "date": "2026-09-08T20:51:34.719234",
+    "video_type": "evening_video",
+    "title": "【ヴィッツストップ高】Go-Tech採択の全貌"
   }
 ]
