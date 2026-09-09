@@ -1,11 +1,11 @@
 {
     "latest": {
-        "video_id": "auto_2026-09-08T20:51:33.772684",
-        "published_at": "2026-09-08T20:51:33.772684",
+        "video_id": "auto_2026-09-09T21:01:26.886443",
+        "published_at": "2026-09-09T21:01:26.886443",
         "ir_stocks": [
             {
-                "name": "ソフトバンクグループ",
-                "ticker": "9984.T",
+                "name": "住友金属鉱山",
+                "ticker": "5713.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -22,26 +22,68 @@
                 "ir_date": null
             },
             {
-                "name": "AGC",
-                "ticker": "5201.T",
+                "name": "野村ホールディングス",
+                "ticker": "8604.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "トヨタ自動車",
-                "ticker": "7203.T",
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "東京エレクトロン",
-                "ticker": "8035.T",
+                "name": "ファーストリテイリング",
+                "ticker": "9983.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-09-08T20:51:33.772684",
+            "published_at": "2026-09-08T20:51:33.772684",
+            "ir_stocks": [
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ENEOSホールディングス",
+                    "ticker": "5020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "AGC",
+                    "ticker": "5201.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東京エレクトロン",
+                    "ticker": "8035.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-09-07T22:12:03.924600",
             "published_at": "2026-09-07T22:12:03.924600",
@@ -667,60 +709,6 @@
                 {
                     "name": "三和ホールディングス",
                     "ticker": "5929.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-08-17T16:50:09.659066",
-            "published_at": "2026-08-17T16:50:09.659066",
-            "ir_stocks": [
-                {
-                    "name": "住友電気工業",
-                    "ticker": "5802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "商船三井",
-                    "ticker": "9104.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "王子ホールディングス",
-                    "ticker": "3861.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本製紙",
-                    "ticker": "3863.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "武田薬品工業",
-                    "ticker": "4502.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "アステラス製薬",
-                    "ticker": "4503.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
