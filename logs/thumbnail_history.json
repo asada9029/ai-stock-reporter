@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-18T20:11:40.786457",
-    "video_type": "evening_video",
-    "title": "【Intel逆襲】TSMC独走に終止符？次世代チップ始動"
-  },
-  {
     "date": "2026-06-19T07:17:54.394028",
     "video_type": "morning_video",
     "title": "【S&P500史上最高値】新時代の幕開け"
@@ -498,5 +493,10 @@
     "date": "2026-09-10T07:07:51.705098",
     "video_type": "morning_video",
     "title": "【原油100ドル突破】中東緊迫で米株急落"
+  },
+  {
+    "date": "2026-09-10T21:01:08.404464",
+    "video_type": "evening_video",
+    "title": "【エアトリストップ高】増額修正の衝撃"
   }
 ]
