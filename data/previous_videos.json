@@ -1,8 +1,14 @@
 {
     "latest": {
-        "video_id": "auto_2026-09-11T20:55:58.490631",
-        "published_at": "2026-09-11T20:55:58.490631",
+        "video_id": "auto_2026-09-14T22:29:08.265222",
+        "published_at": "2026-09-14T22:29:08.265222",
         "ir_stocks": [
+            {
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "東京海上ホールディングス",
                 "ticker": "8766.T",
@@ -10,14 +16,8 @@
                 "ir_date": null
             },
             {
-                "name": "日本郵船",
-                "ticker": "9101.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "トヨタ自動車",
-                "ticker": "7203.T",
+                "name": "任天堂",
+                "ticker": "7974.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -28,20 +28,62 @@
                 "ir_date": null
             },
             {
-                "name": "トヨタ",
-                "ticker": "7203.T",
+                "name": "ソフトバンクグループ",
+                "ticker": "9984.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ＥＮＥＯＳホールディングス",
-                "ticker": "5020.T",
+                "name": "ブリヂストン",
+                "ticker": "5108.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-09-11T20:55:58.490631",
+            "published_at": "2026-09-11T20:55:58.490631",
+            "ir_stocks": [
+                {
+                    "name": "東京海上ホールディングス",
+                    "ticker": "8766.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "日本郵船",
+                    "ticker": "9101.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ自動車",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "トヨタ",
+                    "ticker": "7203.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ＥＮＥＯＳホールディングス",
+                    "ticker": "5020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-09-10T21:00:38.717786",
             "published_at": "2026-09-10T21:00:38.717786",
@@ -631,60 +673,6 @@
                 {
                     "name": "ソフトバンクグループ",
                     "ticker": "9984.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-08-21T16:36:47.761258",
-            "published_at": "2026-08-21T16:36:47.761258",
-            "ir_stocks": [
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "商船三井",
-                    "ticker": "9104.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "任天堂",
-                    "ticker": "7974.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "凸版印刷",
-                    "ticker": "7911.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "武田薬品工業",
-                    "ticker": "4502.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "アステラス製薬",
-                    "ticker": "4503.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
