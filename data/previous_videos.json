@@ -1,32 +1,8 @@
 {
     "latest": {
-        "video_id": "auto_2026-09-14T22:29:08.265222",
-        "published_at": "2026-09-14T22:29:08.265222",
+        "video_id": "auto_2026-09-15T21:17:19.758768",
+        "published_at": "2026-09-15T21:17:19.758768",
         "ir_stocks": [
-            {
-                "name": "リクルートホールディングス",
-                "ticker": "6098.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "東京海上ホールディングス",
-                "ticker": "8766.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "任天堂",
-                "ticker": "7974.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "住友電気工業",
-                "ticker": "5802.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
             {
                 "name": "ソフトバンクグループ",
                 "ticker": "9984.T",
@@ -34,14 +10,80 @@
                 "ir_date": null
             },
             {
-                "name": "ブリヂストン",
-                "ticker": "5108.T",
+                "name": "武田薬品工業",
+                "ticker": "4502.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "ＥＮＥＯＳホールディングス",
+                "ticker": "5020.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "三菱ＵＦＪフィナンシャル・グループ",
+                "ticker": "8306.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "野村ホールディングス",
+                "ticker": "8604.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-09-14T22:29:08.265222",
+            "published_at": "2026-09-14T22:29:08.265222",
+            "ir_stocks": [
+                {
+                    "name": "リクルートホールディングス",
+                    "ticker": "6098.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東京海上ホールディングス",
+                    "ticker": "8766.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "任天堂",
+                    "ticker": "7974.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "住友電気工業",
+                    "ticker": "5802.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ソフトバンクグループ",
+                    "ticker": "9984.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ブリヂストン",
+                    "ticker": "5108.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-09-11T20:55:58.490631",
             "published_at": "2026-09-11T20:55:58.490631",
@@ -619,60 +661,6 @@
                 {
                     "name": "商船三井",
                     "ticker": "9104.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-08-24T16:51:15.588050",
-            "published_at": "2026-08-24T16:51:15.588050",
-            "ir_stocks": [
-                {
-                    "name": "リクルートホールディングス",
-                    "ticker": "6098.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "オリエンタルランド",
-                    "ticker": "4661.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "大林組",
-                    "ticker": "1802.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "鹿島建設",
-                    "ticker": "1812.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "石油資源開発",
-                    "ticker": "1662.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "NTT",
-                    "ticker": "9432.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ソフトバンクグループ",
-                    "ticker": "9984.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
