@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-24T19:08:51.628653",
-    "video_type": "evening_video",
-    "title": "【Alphabet採用】ダウ構成銘柄の革命的交代劇"
-  },
-  {
     "date": "2026-06-25T06:19:16.210811",
     "video_type": "morning_video",
     "title": "【AIバブル崩壊前夜】ハイテク株売りの真実"
@@ -498,5 +493,10 @@
     "date": "2026-09-15T21:17:21.295115",
     "video_type": "evening_video",
     "title": "【レオパレス21ストップ高気配】光通信TOBの全貌"
+  },
+  {
+    "date": "2026-09-16T07:34:26.264001",
+    "video_type": "morning_video",
+    "title": "【米金利2007年高水準】株式市場を襲う重しと利上げの罠"
   }
 ]
