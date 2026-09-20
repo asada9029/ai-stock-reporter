@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-06-30T06:22:02.721137",
-    "video_type": "morning_video",
-    "title": "【SpaceX上場級】Nasdaq採用で宇宙株が覚醒"
-  },
-  {
     "date": "2026-06-30T19:30:17.477281",
     "video_type": "evening_video",
     "title": "【トヨタ次世代電池】量産前倒しの衝撃"
@@ -498,5 +493,10 @@
     "date": "2026-09-18T20:58:30.084686",
     "video_type": "evening_video",
     "title": "【日本抵抗器TOB】フェローテック買収で急騰"
+  },
+  {
+    "date": "2026-09-21T07:03:31.140734",
+    "video_type": "morning_video",
+    "title": "【S&P500最高値圏】金利高とAIチップ投資の罠"
   }
 ]
