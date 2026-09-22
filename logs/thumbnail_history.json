@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-01T06:27:13.814720",
-    "video_type": "morning_video",
-    "title": "【バフェット指標】警戒レベルの限界点"
-  },
-  {
     "date": "2026-07-01T19:42:51.095447",
     "video_type": "evening_video",
     "title": "【SUMCOストップ高】半導体相場、激震の真相"
@@ -498,5 +493,10 @@
     "date": "2026-09-22T07:59:37.789723",
     "video_type": "morning_video",
     "title": "【AMD時価総額1兆ドル到達】半導体需要の爆発的拡大"
+  },
+  {
+    "date": "2026-09-23T07:32:19.667803",
+    "video_type": "morning_video",
+    "title": "【ナスダック最高値】AIチップ狂騒曲とS&P500の息継ぎ"
   }
 ]
