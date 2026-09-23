@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-01T19:42:51.095447",
-    "video_type": "evening_video",
-    "title": "【SUMCOストップ高】半導体相場、激震の真相"
-  },
-  {
     "date": "2026-07-02T06:19:13.399291",
     "video_type": "morning_video",
     "title": "【Intel失速】次世代チップ開発遅延で半導体勢力図が激変"
@@ -498,5 +493,10 @@
     "date": "2026-09-23T07:32:19.667803",
     "video_type": "morning_video",
     "title": "【ナスダック最高値】AIチップ狂騒曲とS&P500の息継ぎ"
+  },
+  {
+    "date": "2026-09-24T07:35:52.647066",
+    "video_type": "morning_video",
+    "title": "【ドル円8週ぶり高値】米利上げ観測の裏側"
   }
 ]
