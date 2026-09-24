@@ -1,11 +1,17 @@
 {
     "latest": {
-        "video_id": "auto_2026-09-18T20:58:28.636589",
-        "published_at": "2026-09-18T20:58:28.636589",
+        "video_id": "auto_2026-09-24T21:25:10.609601",
+        "published_at": "2026-09-24T21:25:10.609601",
         "ir_stocks": [
             {
-                "name": "住友金属鉱山",
-                "ticker": "5713.T",
+                "name": "ブリヂストン",
+                "ticker": "5108.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "テルモ",
+                "ticker": "4543.T",
                 "noted_ir": null,
                 "ir_date": null
             },
@@ -16,32 +22,68 @@
                 "ir_date": null
             },
             {
-                "name": "LIXIL",
-                "ticker": "5938.T",
+                "name": "リクルートホールディングス",
+                "ticker": "6098.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "東京電力ホールディングス",
-                "ticker": "9501.T",
+                "name": "関西電力",
+                "ticker": "9503.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ENEOSホールディングス",
-                "ticker": "5020.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "マルハニチロ",
-                "ticker": "1333.T",
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-09-18T20:58:28.636589",
+            "published_at": "2026-09-18T20:58:28.636589",
+            "ir_stocks": [
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東京エレクトロン",
+                    "ticker": "8035.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "LIXIL",
+                    "ticker": "5938.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "東京電力ホールディングス",
+                    "ticker": "9501.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ENEOSホールディングス",
+                    "ticker": "5020.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "マルハニチロ",
+                    "ticker": "1333.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-09-17T21:16:02.683496",
             "published_at": "2026-09-17T21:16:02.683496",
@@ -583,48 +625,6 @@
                 {
                     "name": "ファーストリテイリング",
                     "ticker": "9983.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-08-31T23:33:53.163436",
-            "published_at": "2026-08-31T23:33:53.163436",
-            "ir_stocks": [
-                {
-                    "name": "関西電力",
-                    "ticker": "9503.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ENEOSホールディングス",
-                    "ticker": "5020.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本航空",
-                    "ticker": "9201.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "野村ホールディングス",
-                    "ticker": "8604.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
