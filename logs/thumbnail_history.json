@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-03T18:56:06.641993",
-    "video_type": "evening_video",
-    "title": "【TSMC新工場】供給網の主導権が日本へ"
-  },
-  {
     "date": "2026-07-06T20:28:44.544072",
     "video_type": "evening_video",
     "title": "【全固体電池】トヨタ量産技術の真実"
@@ -498,5 +493,10 @@
     "date": "2026-09-25T21:24:15.488236",
     "video_type": "evening_video",
     "title": "【生化学営業赤字】配当減額で急落した背景"
+  },
+  {
+    "date": "2026-09-28T07:42:29.009653",
+    "video_type": "morning_video",
+    "title": "【AMD時価総額1兆ドル突破】半導体覇権争いの裏側"
   }
 ]
