@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-09T05:58:19.648224",
-    "video_type": "morning_video",
-    "title": "【NVIDIA出荷開始】AI覇権が再燃"
-  },
-  {
     "date": "2026-07-09T19:31:43.136591",
     "video_type": "evening_video",
     "title": "【原油高再燃】インフレの脅威と家計防衛"
@@ -498,5 +493,10 @@
     "date": "2026-09-29T09:05:59.036849",
     "video_type": "morning_video",
     "title": "【米国債利回り20年ぶり高値】株安連鎖の波紋"
+  },
+  {
+    "date": "2026-09-29T22:27:28.660471",
+    "video_type": "evening_video",
+    "title": "【旭有機材サプライズ増配】大幅続伸の裏側"
   }
 ]
