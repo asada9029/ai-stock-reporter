@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-06T20:28:44.544072",
-    "video_type": "evening_video",
-    "title": "【全固体電池】トヨタ量産技術の真実"
-  },
-  {
     "date": "2026-07-09T05:58:19.648224",
     "video_type": "morning_video",
     "title": "【NVIDIA出荷開始】AI覇権が再燃"
@@ -498,5 +493,10 @@
     "date": "2026-09-28T07:42:29.009653",
     "video_type": "morning_video",
     "title": "【AMD時価総額1兆ドル突破】半導体覇権争いの裏側"
+  },
+  {
+    "date": "2026-09-29T09:05:59.036849",
+    "video_type": "morning_video",
+    "title": "【米国債利回り20年ぶり高値】株安連鎖の波紋"
   }
 ]
