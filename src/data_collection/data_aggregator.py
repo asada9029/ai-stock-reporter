@@ -15,6 +15,11 @@ from src.data_collection.ir_movement_analyzer import IRMovementAnalyzer
 from src.data_collection.news_visual_enricher import NewsVisualEnricher
 from src.data_collection.recent_news_topics import load_recent_topics, save_topics_for_video
 from src.analysis.news_selector import select_attention_news
+from src.data_collection.theme_spillover import attach_theme_spillover
+from src.analysis.anti_monotony import (
+    attach_anti_monotony_context,
+    prefer_concrete_checklist_items,
+)
 from src.video_generation.diagram_generator import (
     generate_capital_flow_diagram,
     generate_checklist_diagram,
@@ -160,28 +165,12 @@ class DataAggregator:
             outlook_key = "jp_tomorrow_outlook" if is_morning else "us_tonight_outlook"
             outlook = aggregated_data.get(outlook_key) or []
             news = aggregated_data.get("attention_news") or []
-            items: list[str] = []
-            for n in outlook[:4]:
-                t = str((n or {}).get("title") or "").strip()
-                if t:
-                    items.append(t)
-            for n in news[:4]:
-                if len(items) >= 3:
-                    break
-                tip = str((n or {}).get("why_now") or (n or {}).get("title") or "").strip()
-                if tip and tip not in items:
-                    items.append(tip)
-            # 最低3件の定番チェックで埋める
-            defaults = (
-                ["寄り付きの指数反応", "ドル円の方向感", "本命ニュースの個別波及"]
-                if is_morning
-                else ["今夜の米指標・要人発言", "ドル円の急変有無", "明日の日本株オープニング"]
+            items = prefer_concrete_checklist_items(
+                news,
+                outlook,
+                is_morning=is_morning,
+                limit=3,
             )
-            for d in defaults:
-                if len(items) >= 3:
-                    break
-                if d not in items:
-                    items.append(d)
             title = "今日見るべきチェック" if is_morning else "明日のチェック"
             path = generate_checklist_diagram(
                 items[:4],
@@ -191,7 +180,8 @@ class DataAggregator:
             if path:
                 diagrams = aggregated_data.setdefault("diagrams", {})
                 diagrams["checklist_path"] = path
-                log_kv("🖼️ checklist:done", {"items": len(items[:4])})
+                aggregated_data["checklist_items"] = items[:4]
+                log_kv("🖼️ checklist:done", {"items": len(items[:4]), "sample": items[:2]})
         except Exception as e:
             log(f"⚠️ checklist:skip err={e}")
 
@@ -459,6 +449,22 @@ class DataAggregator:
 
         # 2. 注目ニュースの取得完了ログ
         print(f"注目ニュースの取得完了（{len(aggregated_data.get('attention_news', []))}件）")
+
+        # テーマ波及ナレッジ（動画側の薄い正本）。無くても続行。
+        try:
+            attach_theme_spillover(aggregated_data)
+            tb = aggregated_data.get("theme_bridge") or {}
+            log_kv(
+                "🧭 theme_spillover",
+                {
+                    "themes": len((tb.get("themes") or {})),
+                    "related_edges": len(tb.get("related_edges") or []),
+                    "aliases": len(tb.get("aliases") or {}),
+                    "source": tb.get("source"),
+                },
+            )
+        except Exception as e:
+            log(f"⚠️ theme_spillover:skip err={e}")
 
         # --- 朝動画の場合はここで終了（重い処理をスキップ） ---
         if is_morning:
@@ -783,6 +789,27 @@ class DataAggregator:
                 print("今回の注目IR銘柄メタを保存しました。")
             except Exception as e:
                 print(f"今回の注目IR銘柄メタ保存に失敗しました: {e}")
+
+        # 脱マンネリ文脈（日替わり枠・差分・related連投抑制・今日の問い）
+        try:
+            attach_anti_monotony_context(
+                aggregated_data,
+                video_type=video_type,
+                recent_topics=recent_topics,
+            )
+            am = aggregated_data.get("anti_monotony") or {}
+            corner = (am.get("corner") or {}).get("id")
+            log_kv(
+                "🔁 anti_monotony",
+                {
+                    "corner": corner,
+                    "sector_depth": (am.get("sector_flow_delta") or {}).get("depth"),
+                    "avoid_related": len(am.get("avoid_related_themes") or []),
+                    "recent_topics": len(am.get("recent_topics_avoid_deep") or []),
+                },
+            )
+        except Exception as e:
+            log(f"⚠️ anti_monotony:skip err={e}")
 
         # 収集したデータをJSONファイルとして保存
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

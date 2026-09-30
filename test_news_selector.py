@@ -11,6 +11,7 @@ from src.analysis.news_selector import (
     infer_scope,
     apply_related_ticker_guard,
     annotate_news_roles,
+    match_theme_from_aliases,
 )
 
 
@@ -95,6 +96,15 @@ def test_scope_issuer_from_company_in_title():
         "related_ticker": "9684.T",
     }
     assert infer_scope(news) == "issuer"
+
+
+def test_theme_alias_matches_without_ascii_substring_false_positive():
+    assert match_theme_from_aliases(
+        {"title": "OpenAI、データセンター投資を拡大"}
+    ) == "AI"
+    assert match_theme_from_aliases(
+        {"title": "Chairman said earnings were stable"}
+    ) is None
 
 
 def test_macro_clears_unrelated_ticker():

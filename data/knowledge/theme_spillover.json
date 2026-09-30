@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "owner": "ai-stock-reporter",
+  "note": "動画側の薄い正本。売買推奨ではない。related strong=本命波及 / weak=参考のみ。巨大マスタや決算カレンダーは持たない。",
+  "updated_at": "2026-09-30",
+  "related_edges": [
+    {"from": "AI", "to": "半導体", "weight": "strong"},
+    {"from": "AI", "to": "電線", "weight": "strong"},
+    {"from": "AI", "to": "SaaS", "weight": "strong"},
+    {"from": "AI", "to": "電力・送電", "weight": "weak"},
+    {"from": "AI", "to": "ロボタクシー", "weight": "weak"},
+    {"from": "SaaS", "to": "AI", "weight": "strong"},
+    {"from": "ロボタクシー", "to": "AI", "weight": "weak"},
+    {"from": "半導体", "to": "AI", "weight": "strong"},
+    {"from": "半導体", "to": "電線", "weight": "weak"},
+    {"from": "半導体", "to": "電力・送電", "weight": "weak"},
+    {"from": "電力・送電", "to": "電線", "weight": "strong"},
+    {"from": "電力・送電", "to": "AI", "weight": "weak"},
+    {"from": "電線", "to": "AI", "weight": "strong"},
+    {"from": "電線", "to": "電力・送電", "weight": "weak"}
+  ],
+  "aliases": {
+    "AI": ["ai", "openai", "chatgpt", "生成ai", "ジェミニ", "gemini", "llm", "データセンター", "datacenter"],
+    "半導体": ["半導体", "semiconductor", "nvidia", "nvda", "tsmc", "sox", "ハイテク", "アドバンテスト", "東京エレクトロン", "レーザーテック", "disco", "ディスコ", "gpu"],
+    "電線": ["電線", "ケーブル", "光ケーブル", "光ファイバ", "フジクラ", "住友電工"],
+    "電力・送電": ["電力", "送電", "原発", "再エネ", "電力株", "グリッド", "関西電力", "東京電力"],
+    "SaaS": ["saas", "クラウドソフト", "サブスクソフト"],
+    "防衛": ["防衛", "defense", "defence", "軍需", "ミサイル", "安全保障", "宇宙防衛"],
+    "ロボタクシー": ["ロボタクシー", "自動運転", "autonomous"],
+    "ゲーム": ["ゲーム", "任天堂", "カプコン", "スクエニ", "バンナム", "ソニーg"]
+  },
+  "themes": {
+    "AI": {"label": "生成AI・データセンター需要"},
+    "半導体": {"label": "半導体・製造装置"},
+    "電線": {"label": "電線・ケーブル"},
+    "電力・送電": {"label": "電力・送電インフラ"},
+    "SaaS": {"label": "SaaS・ソフト"},
+    "防衛": {"label": "防衛"},
+    "ロボタクシー": {"label": "ロボタクシー・自動運転"},
+    "ゲーム": {"label": "ゲーム"}
+  }
+}

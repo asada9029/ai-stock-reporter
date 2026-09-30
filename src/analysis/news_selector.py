@@ -280,6 +280,11 @@ def infer_scope(news: Dict) -> str:
     if company_in_title or (issuerish and (company or ticker)):
         return "issuer"
 
+    # 動画側の薄い aliases でテーマ語が当たれば theme
+    matched = match_theme_from_aliases(news)
+    if matched:
+        return "theme"
+
     impact = float((news.get("scores") or {}).get("impact") or score_impact_from_text(news))
     if impact >= 0.45 or _keyword_hit_score(blob, IMPACT_KEYWORDS) >= 0.45:
         # 大局語があるが特定社名がタイトルに無い → テーマ／地合い
@@ -287,6 +292,37 @@ def infer_scope(news: Dict) -> str:
     if company or ticker:
         return "issuer"
     return "unclear"
+
+
+def match_theme_from_aliases(news: Dict) -> Optional[str]:
+    """theme_spillover.aliases でヒットしたテーマ名。無ければ None。"""
+    try:
+        from src.data_collection.theme_spillover import load_theme_aliases
+    except Exception:
+        return None
+    aliases = load_theme_aliases()
+    if not aliases:
+        return None
+    blob = _text_blob(news).lower()
+    # 長い alias 優先で誤爆を減らす
+    best_theme = None
+    best_len = 0
+    for theme, words in aliases.items():
+        for w in words:
+            if len(w) < 2:
+                continue
+            # "ai" が "chairman" 等に誤爆しないよう、ASCII alias は単語境界で判定。
+            if w.isascii() and re.fullmatch(r"[a-z0-9_.&+-]+", w):
+                matched = re.search(
+                    rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])",
+                    blob,
+                )
+            else:
+                matched = w in blob
+            if matched and len(w) > best_len:
+                best_theme = theme
+                best_len = len(w)
+    return best_theme
 
 
 def infer_polarity(news: Dict) -> str:
@@ -311,6 +347,10 @@ def annotate_news_roles(news: Dict) -> Dict:
         item["scope"] = infer_scope(item)
     if not item.get("polarity"):
         item["polarity"] = infer_polarity(item)
+    if not item.get("matched_theme"):
+        theme = match_theme_from_aliases(item)
+        if theme:
+            item["matched_theme"] = theme
     return item
 
 
@@ -617,4 +657,5 @@ __all__ = [
     "infer_polarity",
     "annotate_news_roles",
     "apply_related_ticker_guard",
+    "match_theme_from_aliases",
 ]

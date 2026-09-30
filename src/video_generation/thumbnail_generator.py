@@ -268,18 +268,69 @@ class ThumbnailGenerator:
             return False
         return bool(self._INCOME_TEMPLATE_RE.search(text))
 
+    _TOPIC_STOPWORDS = {
+        "本日", "今日", "明日", "昨夜", "市場", "株式", "株価", "ニュース", "まとめ",
+        "注目", "動向", "影響", "背景", "裏側", "波紋", "初心者", "向け", "解説",
+        "米国", "日本", "相場", "投資", "関連", "企業", "急伸", "急落", "上昇", "下落",
+        "続伸", "続落", "警戒", "見通し", "予想", "チェック", "ポイント",
+    }
+
+    def _extract_topic_keywords(self, title: str) -> set:
+        """サムネ重複判定用に、固有名詞・数値フックをざっくり抽出する。"""
+        if not title:
+            return set()
+        text = re.sub(r"[【】\[\]「」『』…・\|｜/／]", " ", title)
+        tokens = set()
+        # 英数字ティッカー・社名（AMD, NVIDIA, S&P 等）
+        for m in re.finditer(r"[A-Za-z][A-Za-z0-9\.&]{1,15}", text):
+            tokens.add(m.group(0).upper())
+        # 数値＋単位（1兆ドル, 20年, 3%, 158円 等）
+        for m in re.finditer(r"\d+(?:\.\d+)?\s*(?:兆|億|万|%|％|円|ドル|年|ヶ月|カ月|か月)", text):
+            tokens.add(re.sub(r"\s+", "", m.group(0)))
+        # 漢字・カタカナの連続（2文字以上）
+        for m in re.finditer(r"[一-龥ぁ-んァ-ヶー]{2,12}", text):
+            tok = m.group(0)
+            if tok in self._TOPIC_STOPWORDS:
+                continue
+            if len(tok) >= 2:
+                tokens.add(tok)
+        return tokens
+
+    def _is_duplicate_topic(self, title: str, recent_titles: List[str], lookback: int = 3) -> bool:
+        """
+        直近サムネと『パッと見同じ動画』になる重複を検出する。
+        - 意味のあるキーワード交差が2つ以上
+        - または長さ3以上の固有語が1つ以上重なる
+        """
+        kw = self._extract_topic_keywords(title)
+        if not kw:
+            return False
+        recent = list(recent_titles or [])[-lookback:]
+        for recent_title in recent:
+            rkw = self._extract_topic_keywords(recent_title)
+            inter = kw & rkw
+            if not inter:
+                continue
+            if len(inter) >= 2:
+                return True
+            if any(len(t) >= 3 for t in inter):
+                return True
+        return False
+
     def _fallback_safe_title(
         self,
         attention_news: List[Dict],
         *,
         block_nikkei: bool = True,
         block_income_template: bool = True,
+        recent_titles: Optional[List[str]] = None,
     ) -> str:
         """
         条件違反時の安全なフォールバックタイトルを生成。
-        日経系・月○万定型を避けてニュース見出しを使う。
+        日経系・月○万定型・直近トピック重複を避けてニュース見出しを使う。
         """
         ng_words = ["日経", "日経平均", "NIKKEI", "nikkei", "ニッケイ", "平均株価"]
+        recent_titles = recent_titles or []
         for news in attention_news:
             t = news.get("title", "")
             if not t:
@@ -287,6 +338,8 @@ class ThumbnailGenerator:
             if block_nikkei and any(w in t for w in ng_words):
                 continue
             if block_income_template and self._has_income_template(t):
+                continue
+            if self._is_duplicate_topic(t, recent_titles):
                 continue
             return t
         # 全日経・全日定型などで候補が無いときは指数を出さない安全側へ
@@ -501,10 +554,11 @@ class ThumbnailGenerator:
                - 市場が動いていないのに「日経〇万突破！」や「資産爆増」といった、根拠のない将来予測や定型文を使い回すことは**厳禁**です。
                - 変化がない市場（日経平均が横ばい等）は、パワーワードであってもサムネイルに採用しないでください。
 
-            5. **トピック重複の完全排除（脱・マンネリ）**:
-               - 【過去のタイトル履歴】を1つずつ確認し、**同じキーワード（例：150兆円、富へのカギ、金脈、AI王者、日経〇万）や同じ構成のタイトルを生成することを絶対に避けてください。**
-               - 直近3回以内のタイトルと「パッと見で同じ動画」だと思われたら失敗です。
+            5. **トピック重複の完全排除（脱・マンネリ・最重要）**:
+               - 【過去のタイトル履歴】を1つずつ確認し、**同じキーワード（例：AMD、1兆ドル、半導体覇権、150兆円、日経〇万）や同じ構成のタイトルを生成することを絶対に避けてください。**
+               - **直近3回以内**のタイトルと「パッと見で同じ動画」だと思われたら失敗です。同じ企業名・同じ数値フックの連投は禁止。
                - リストの中に、まだサムネイルにしていない「新鮮な切り口のニュース」があれば、たとえ地味に見えてもそちらを鋭くリライトして採用してください。
+               - どうしても同じ材料しかない場合でも、切り口（金利影響 / 日本株波及 / セクター資金など）を変えて別タイトルにすること。
 
             6. **知名度の低い専門用語のみを翻訳・補足**:
                - 「ISM」「CPI」「PCE」「FOMC」など、一般層に馴染みの薄い指標名のみを、直感的な言葉（物価、景気、金利、買い時）に翻訳してください。
@@ -546,32 +600,31 @@ class ThumbnailGenerator:
                 highlights = data.get('highlights', [])
                 emotion = data.get('emotion', 'happy')
                 
-                # インデックス情報の保持
+                # インデックス情報の保持（履歴は最終タイトル確定後に保存）
                 main_news_index = data.get('main_news_index', 0)
                 highlight_indices = data.get('highlight_indices', [])
-
-                # --- 履歴の保存 ---
-                history_data.append({
-                    "date": datetime.now().isoformat(),
-                    "video_type": video_type,
-                    "title": title
-                })
-                # 直近100件程度に制限して保存
-                history_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(history_file, "w", encoding="utf-8") as f:
-                    json.dump(history_data[-100:], f, ensure_ascii=False, indent=2)
-                # -----------------
             else:
                 raise ValueError("JSON not found")
                 
         except Exception as e:
             print(f"⚠️ LLMによるタイトル選定失敗: {e}。フォールバックロジックを使用します。")
-            # フォールバック（既存のロジック）
+            # フォールバック（直近トピック重複も避ける）
             if attention_news:
-                title = attention_news[0].get('title', '本日の株式市場まとめ')
-                highlights = [n.get('title', '') for n in attention_news[1:4]]
+                title = self._fallback_safe_title(
+                    attention_news,
+                    block_nikkei=not self._nikkei_hero_allowed(analysis_result),
+                    block_income_template=True,
+                    recent_titles=recent_titles,
+                )
+                highlights = [n.get('title', '') for n in attention_news if n.get('title') != title][:3]
                 main_news_index = 0
-                highlight_indices = [1, 2, 3]
+                for idx, news in enumerate(attention_news):
+                    if news.get("title", "") == title:
+                        main_news_index = idx
+                        break
+                highlight_indices = [
+                    i for i, n in enumerate(attention_news) if n.get("title") != title
+                ][:3]
             else:
                 title = "本日の株式市場まとめ"
                 highlights = []
@@ -583,7 +636,12 @@ class ThumbnailGenerator:
         # 「日経を主役にしない条件」をコード側で強制し、LLM逸脱を防ぐ
         if not self._nikkei_hero_allowed(analysis_result) and self._title_references_nikkei_market(title):
             print("⚠️ 日経の変動が3.0%未満または未取得のため、日経・指数主役のタイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news, block_nikkei=True, block_income_template=True)
+            title = self._fallback_safe_title(
+                attention_news,
+                block_nikkei=True,
+                block_income_template=True,
+                recent_titles=recent_titles,
+            )
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -594,7 +652,12 @@ class ThumbnailGenerator:
         # 「歴史的高値」系ワードは、ニュース側で高値更新の裏取りがある場合のみ許可
         if self._title_mentions_historical_peak(title) and not self._has_historical_peak_evidence(analysis_result, main_news_index):
             print("⚠️ 高値更新の裏取りがないため、歴史的高値系タイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news, block_nikkei=not self._nikkei_hero_allowed(analysis_result), block_income_template=True)
+            title = self._fallback_safe_title(
+                attention_news,
+                block_nikkei=not self._nikkei_hero_allowed(analysis_result),
+                block_income_template=True,
+                recent_titles=recent_titles,
+            )
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -605,7 +668,28 @@ class ThumbnailGenerator:
         # 「月○万」等の定型が残った場合は差し替え
         if self._has_income_template(title):
             print("⚠️ 月○万などの定型表現のため、タイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news, block_nikkei=not self._nikkei_hero_allowed(analysis_result), block_income_template=True)
+            title = self._fallback_safe_title(
+                attention_news,
+                block_nikkei=not self._nikkei_hero_allowed(analysis_result),
+                block_income_template=True,
+                recent_titles=recent_titles,
+            )
+            main_news_index = 0
+            for idx, news in enumerate(attention_news):
+                if news.get("title", "") == title:
+                    main_news_index = idx
+                    break
+            emotion = 'normal'
+
+        # 直近サムネとのトピック重複（AMD連投など）をコード側で強制回避
+        if self._is_duplicate_topic(title, recent_titles, lookback=3):
+            print(f"⚠️ 直近サムネとトピック重複のため差し替えます: {title}")
+            title = self._fallback_safe_title(
+                attention_news,
+                block_nikkei=not self._nikkei_hero_allowed(analysis_result),
+                block_income_template=True,
+                recent_titles=recent_titles + [title],
+            )
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -619,7 +703,12 @@ class ThumbnailGenerator:
         # サニタイズ後に日経主役が復活しないよう再チェック
         if not self._nikkei_hero_allowed(analysis_result) and self._title_references_nikkei_market(title):
             print("⚠️ 調整後も日経主役が検出されたため、タイトルを差し替えます。")
-            title = self._fallback_safe_title(attention_news, block_nikkei=True, block_income_template=True)
+            title = self._fallback_safe_title(
+                attention_news,
+                block_nikkei=True,
+                block_income_template=True,
+                recent_titles=recent_titles,
+            )
             main_news_index = 0
             for idx, news in enumerate(attention_news):
                 if news.get("title", "") == title:
@@ -651,6 +740,19 @@ class ThumbnailGenerator:
         highlights = [h[:16] + "…" if len(h) > 17 else h for h in highlights]
         while len(highlights) < 3:
             highlights.append("最新の市場動向をチェック")
+
+        # --- 最終タイトルを履歴へ保存（差し替え後の値を正とする） ---
+        try:
+            history_data.append({
+                "date": datetime.now().isoformat(),
+                "video_type": video_type,
+                "title": title,
+            })
+            history_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(history_data[-100:], f, ensure_ascii=False, indent=2)
+        except Exception as hist_err:
+            print(f"[WARN] サムネ履歴の保存に失敗: {hist_err}")
             
         # サムネイル作成
         path = self.create_thumbnail(

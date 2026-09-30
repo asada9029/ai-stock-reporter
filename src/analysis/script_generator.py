@@ -24,6 +24,12 @@ from src.analysis.script_quality import (
     evaluate_script_quality,
     optional_section_keys_to_skip,
 )
+from src.analysis.anti_monotony import (
+    build_anti_monotony_prompt_block,
+    evaluate_anti_monotony,
+    persist_after_script,
+    shorts_role_prompt_appendix,
+)
 
 
 def _load_characters_config() -> Dict:
@@ -94,6 +100,21 @@ class ScriptGenerator:
   - `diagrams.market_board_path`（指数/地合いの導入）
   - `diagrams.capital_flow_path`（資金の行き先・セクター概要）
   - `diagrams.checklist_path`（チェック3点。展望セクションで使用）
+
+# テーマ波及ナレッジ（related・織り込み）
+- 入力に `theme_bridge` がある場合だけ使う。無いときは無視。
+- `related_edges` の weight:
+  - **strong**: 本命の連想。影響の読みで「波及本命」として短く言及してよい。
+  - **weak**: 参考のみ。「間接・参考」と明言し、メイン結論にしない。
+- `scope=issuer`（当事者1社）のニュースでは、related テーマへ広げない。related_ticker も当事者1社のまま。
+- `scope=theme` のときだけ strong related を影響の読みに使ってよい。`matched_theme` があればそのテーマの edge を優先。
+- **脱マンネリ（重要）**:
+  - related 言及は本編全体で最大1〜2回。毎回同じテーマ連鎖を定型句で繰り返さない。
+  - 今日の本命材料に直結する edge だけ使う。材料と無関係な定番波及（例の暗記読み）は禁止。
+  - 直近トピックと似た波及説明なら、省略するか「前回と違い今日見る点は〜」に切り替える。
+- 織り込み注意（任意）: 材料銘柄が直近で対テーマ／対業種に大きく先行している場合は「すでに織り込みが進んでいる可能性」を1行。買い推奨にはしない。
+- 代表銘柄の百科事典紹介は禁止。ニュースで動いた銘柄を優先。
+- 売買推奨・エントリー誘導は禁止。観測・注意喚起まで。
 """
     @staticmethod
     def _immersive_prompt_appendix(analysis_data: Dict) -> str:
@@ -109,15 +130,15 @@ class ScriptGenerator:
 - 各行は短め（目安：1行あたり全角18〜22文字以内）。
 - 良い例（ニュース）: ["決算後に急落", "見通し下方修正", "小売セクター波及に注意", "寄り付き反応を確認"]
 - 悪い例: 1行だけ、音声の長文をそのまま載せる、箇条書き8行、**英語の全文台本・英語字幕**。
-- 【opening 上書き】:
-    - 挨拶の直後、20〜40秒以内に「今日の米国市場の結論（一言）」と「最大の材料は何か」を speech_text で言い切ること。
-    - 名乗り例: 「みなさん、こんにちは。株野みのりです。」（「マイカブのホスト」等は禁止）
-    - その直後に「ではまず指数（または市場全体）から確認して、次にニュースを深掘りします」のように自然に次へ繋げてください。
-    - opening の on_screen_text は **4〜5行**（寂しい3行だけは避ける）。各行は **「・カテゴリ：内容」** 形式（例: `・市場：円高警戒`, `・注目：半導体決算`, `・今夜：ISM景況感`）。メニュー8行は禁止。例:
-        "米国株: AI決算でハイテク主導高"
+- 【opening 上書き・冒頭15秒ルール】:
+    - **名乗りより先に**、サムネ話題（{thumb}）の数字・固有名詞フックを1文で言い、続けて「今日見るならこの2つ」レベルの一言結論を出す（合計15秒以内）。
+    - 例: 「AMDの時価総額が1兆ドルを超えました。今日見るなら半導体と金利、この2つです。みなさんこんにちは、株野みのりです。」
+    - 長いメニュー読み上げは禁止。「ではまず指数から、次にニュースを深掘りします」程度の短いつなぎで次へ。
+    - opening の on_screen_text は **4〜5行**（寂しい3行だけは避ける）。各行は **「・カテゴリ：内容」** 形式。メニュー8行は禁止。例:
         "注目: {thumb[:16]}"
-        "関連: エヌビディア／セールスフォース急伸"
-        "日本株: 半導体・ソフト関連に波及注目"
+        "結論: 半導体と金利を注視"
+        "市場: 米国株の地合い"
+        "日本株: 波及の有無を確認"
         "チェック: 寄り付きの選別反応"
     - opening はシーン分割なしの1シーンでOK。
 - 【シーン分割】1画面＝1メッセージ。図解シーンの補足は2行以内。**文字中心／ニュースは3〜5行**を維持し、それ以上ならシーン分割。
@@ -178,6 +199,7 @@ class ScriptGenerator:
             prompt = f"""
 あなたは株ニュース解説キャラクター「株野（かぶの）みのり」の動画ディレクター兼台本作家です。
 YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を生成してください。
+{shorts_role_prompt_appendix()}
 
 # ショート動画のコンセプト: {shorts_type}
 {"案A: 本日のマーケットに関連する、初心者が躓きやすい・知っておくべき重要な株用語・経済用語を1つピックアップし、やさしく解説します（用語解説）。" if "shorts_a" in video_type else f"案B: チャートが動いている注目銘柄「{valid_companies[0]['company_name'] if valid_companies else '注目銘柄'}」を1つピックアップして深掘りします。"}
@@ -188,7 +210,7 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
     - 【重要】ショートでは「タイトル表示」「字幕表示（segments）」は一切しません（テキストは on_screen_text のみを使用）。
     - 画面上部には target_files（用語解説用の美しいアイキャッチ画像やチャート）を表示し、その下に on_screen_text で3行の要約を配置するレイアウトです。
 - 【構成】: 
-    - 導入（5秒）: 「こんにちは、株野みのりです！」（※導入シーンから用語解説またはニュース内容を表示してください）
+    - 導入（5秒）: **挨拶より先に**用語名または企業名のフックを言う（例:「今日の用語は不可抗力通知です」「注目はAMDです」）。その後「株野みのりです」でも可。導入シーンから用語/銘柄を on_screen_text で表示すること。
     - 本編（45秒）: 用語解説または銘柄解説
     - 結び（10秒）: ニュースや用語のまとめや「明日も見てね！」といった挨拶（※重要：チャンネル登録や高評価の訴求は、後のシーンで自動追加されるため、ここでは絶対に言わないでください）。
 - 【データ遵守】: 分析データにある正確な数値を使用してください。
@@ -224,7 +246,8 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:
 - scene, section_title, duration, text, speech_text, emotion, image_type, bg_name, target_files, on_screen_text
-- （任意だが推奨）案A（用語解説）では、解説対象となる用語名（例：「地政学リスク」や「PBR」）を **"explained_term"** というキーに格納して出力してください（全シーンで共通の用語名）。
+- （必須）案A（用語解説）では、解説対象の用語名を全シーン共通で **"explained_term"** に格納（例：「地政学リスク」「PBR」）。空文字禁止。
+- （必須）案B（注目銘柄）では、取り上げる企業名を全シーン共通で **"explained_term"** に格納（例：「AMD」「トヨタ自動車」）。空文字禁止。
 - shorts動画では section_title は空文字（""）でOKです（表示しないため）。
 - shorts動画では image_type は "chart" を基本としてください。
 - target_files: 案A・案Bともに `["data/images/placeholder.png"]` のようなダミーを適当に指定してください。後から自動で正しい解説画像に置換されます。
@@ -270,19 +293,21 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
     - `sectors`: セクターごとの詳細リスト。各要素に `sector_name` (セクター名), `type` (top/bottom), `change` (騰落率), `news` (そのセクターの最新ニュースリスト) があります。
     - `news` の各要素: `title` (見出し), `summary` (要約)
 - `jp_tomorrow_outlook`: 明日の日本市場への影響予測に関するニュースリスト。`title` (見出し) と `summary` (要約) があります。
+- `theme_bridge`: 動画側の薄い波及ナレッジ（related_edges / aliases）。推奨ではない。無いときは無視。
 - `next_delivery_info`: 次回の配信予定情報（`date`, `time`, `is_holiday_gap`）。
 
 # セクション別詳細指示
-1. 【opening】: 
-    - 挨拶の直後、今日の一言結論か違和感（例: 資金の行き先）を短く示し、続けて「まずは市場指数、その次に（サムネイル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）」と案内する。
-    - 名乗り例: 「みなさん、こんにちは。株野みのりです。」（「マイカブのホスト」等は禁止）
-    - 後半メニュー（米国セクター分析、日本市場への影響予測）も触れる。
-    - 【重要：on_screen_textの指示】: 以下を1行ずつ **「・カテゴリ：内容」** 形式で表示（カテゴリ例: 市場, 注目, 材料, セクター, 今夜）。
-        "・市場：米国市場の動向"
+1. 【opening・冒頭15秒ルール】:
+    - **名乗りより先に**、サムネイル話題（{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）の数字・固有名詞フックを1文で言い、続けて一言結論（今日の本命を具体名で）を出す。合計15秒以内。
+    - 「半導体と金利」のような定型結論は禁止。サムネ／attention_news の固有名詞を使う。
+    - その後に名乗り: 「みなさん、こんにちは。株野みのりです。」（「マイカブのホスト」等は禁止）
+    - 長いメニュー読み上げは禁止。「まずは市場指数、その次に注目ニュース」程度の短いつなぎで次へ。
+    - 【重要：on_screen_textの指示】: 以下を1行ずつ **「・カテゴリ：内容」** 形式で表示（結論寄り）。
         "・注目：{analysis_data.get('selected_thumbnail_title', '本日のトピック')[:16]}"
-        "・セクター：米国セクター分析"
+        "・結論：今日見るべきポイントを一言で"
+        "・市場：米国市場の動向"
         "・展望：日本市場への影響予測"
-        "・まとめ：今日のチェックポイント"
+        "・チェック：今日の確認ポイント"
     - また、このセクションだけシーン分割はなしでお願いします。
 2. 【us_market_summary】: 可能なら先に `diagrams.market_board_path` を見せて地合いを一目で示し、その後 S&P500、ナスダック(NASDAQ)、ダウ(DOW)をそれぞれ独立したシーンに分ける。各指数の `chart_image_path` を見せながら、終値(current_price)、前日比(change_percent)、変動原因を分析。
 3. 【us_news_highlights】: **束ねて紹介 → 影響の読み** の流れで。
@@ -294,11 +319,16 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
     - `scope=issuer` は関連チャート・言及をその1社だけ（同業に広げない）。`lane=macro` に無理な個別ティッカーカードを付けない。
     - **【ニュース画像】**: 図解を優先。個別 `visual_image_path` は補助。OGは無理に使わない。
 4. 【us_sector_analysis】: `diagrams.capital_flow_path` があれば先に見せ、続けて `sector_analysis -> rankings_screenshot` を表示しながら、上昇・下落が顕著だったセクター(`sector_analysis -> sectors`)を紹介した後、シーンを切り替え、挙げたセクターの最新ニュース(`sector_analysis -> sectors -> news`)を`on_screen_text`で表示し、騰落原因を分析。理由が不明な場合は市場心理（利益確定、材料待ち等）を推測。
-5. 【japan_impact_prediction】: `jp_tomorrow_outlook` と直前のニュース束を踏まえ、米国→日本の影響を予測。最後に「今日見るべきチェック3点」で締める。`diagrams.checklist_path` があれば `target_files` に指定。注目日本株の予測（例：NVIDIA高→東エレク）、為替の影響。
+5. 【japan_impact_prediction】: `jp_tomorrow_outlook` と直前のニュース束を踏まえ、米国→日本の影響を予測。最後に「今日見るべきチェック3点」で締める。`diagrams.checklist_path` があれば `target_files` に指定。注目日本株の予測、為替の影響。
+    - `theme_bridge.related_edges` は、今日の本命材料に直結する strong だけ最大1点。weak は必要なとき「参考」1語まで。定番波及の暗記読みは禁止。
+    - 個別企業の決算・受注・提携だけの話は同業総なめにしない（scope=issuer）。
+    - 締めは「寄り付きで選別が起きやすいか」の観測メモまで。売買指示は禁止。
+    - チェック3点は毎回同じ型（金利・為替・半導体）に固定しない。今日の news_highlights から具体名で作る。
 6. 【closing】: 掛け合いで締め。今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「夜18時のイブニングレポートもお楽しみに！」といった言葉で締めてください。
 
 # 分析データの追加キー
 - `diagrams.news_bundle_path` / `impact_flow_path` / `market_board_path` / `capital_flow_path` / `checklist_path`: 図解PNG。あるときは該当セクションで必ず使う。
+- `theme_bridge`: 上記の通り（任意）。
 
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:
@@ -387,17 +417,19 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
 - `prev_ir_analysis`: 前回紹介銘柄の追跡結果リスト。
     - 各要素: `company_name` (社名), `change_percent` (騰落率), `recent_news` (直近ニュースリスト), `reason_summary` (変動理由の要約), `chart_image_path` (チャート画像パス)
 - `us_tonight_outlook`: 今夜の米国市場の見通しニュースリスト。`attention_news` と同様に `visual_image_path` 等を含む場合があります。
+- `theme_bridge`: 動画側の薄い波及ナレッジ（related_edges / aliases）。推奨ではない。無いときは無視。
 - `next_delivery_info`: 次回の配信予定情報（`date`, `time`, `is_holiday_gap`）。
 
 # セクション別詳細指示
-1. 【opening】: 
-    - 挨拶の直後、今日の一言結論か違和感を短く示し、「まずは市場指数、その次に（サムネイル：{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）」と案内。
-    - 名乗り例: 「みなさん、こんにちは。株野みのりです。」（「マイカブのホスト」等は禁止）
-    - 続けて後半メニューも触れる。
-    - 【重要：on_screen_textの指示】: **4〜5行**に絞り、各行は **「・カテゴリ：内容」** 形式（カテゴリ例: 市場, 注目, 材料, セクター, 今夜）。メニュー8行は禁止。例:
-        "・市場：{analysis_data.get('market_indices', {}).get('NIKKEI', {}).get('change_percent', 0) or '地合い'}の動き"
+1. 【opening・冒頭15秒ルール】:
+    - **名乗りより先に**、サムネイル話題（{analysis_data.get('selected_thumbnail_title', '本日の注目ニュース')}）の数字・固有名詞フックを1文で言い、続けて一言結論（今日の本命を具体名で）を出す。合計15秒以内。
+    - 「この銘柄と為替」のような定型結論は禁止。サムネ／attention_news の固有名詞を使う。
+    - その後に名乗り: 「みなさん、こんにちは。株野みのりです。」（「マイカブのホスト」等は禁止）
+    - 長いメニュー読み上げは禁止。「まずは市場指数、その次に注目ニュース」程度の短いつなぎで次へ。
+    - 【重要：on_screen_textの指示】: **4〜5行**に絞り、各行は **「・カテゴリ：内容」** 形式。メニュー8行は禁止。例:
         "・注目：{analysis_data.get('selected_thumbnail_title', '本日のトピック')[:16]}"
-        "・材料：決算・イベントのチェック"
+        "・結論：今日見るべきポイントを一言で"
+        "・市場：{analysis_data.get('market_indices', {}).get('NIKKEI', {}).get('change_percent', 0) or '地合い'}の動き"
         "・セクター：資金の行き先"
         "・今夜：米国と明日の展望"
     - また、このセクションだけシーン分割はなしでお願いします。
@@ -412,13 +444,20 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
     - **【ニュース画像】**: 図解を優先。個別 visual は補助。
 4. 【event_calendar】: 決算のみ。`kessan_schedule.image_paths`（なければ `image_path`）を最大2ページ分、ページごとにシーン化。株主総会は扱わない。`data` が空、または画像が無い場合は **このセクションのシーンを一切作らず、次へ無言で進む**（「予定はありません」「スキップします」等は言わない）。
 5. 【sector_overview】: **夜の核。厚めに。** `diagrams.capital_flow_path` があれば先に見せ、続けて `sector_analysis -> rankings_screenshot`。上昇・下落が顕著だったセクターをそれぞれ具体名で挙げ、「なぜ」を短く。news_highlights と同じ話の繰り返し禁止。
+    - 業種騰落は「今日どこへ資金が寄ったか」の事実。累積ランキングの読み上げだけで終わらない。
+    - 可能なら「なぜその流れに見えたか」を1セクターあたり一言（ニュース・為替・金利・需給）。
+    - 消化局面（大きく動いたあと材料更新なし）は、同じ話を厚く繰り返さない。
+    - 毎回同じ「上位3業種＋下位3業種」の型読みを避け、今日いちばん違和感のある流れを優先。
 6. 【sector_attention】: **任意・薄め。** overview やニュースと重複するなら **シーンを作らず省略してよい**。残すなら「材料で実際に動いた銘柄」を最大1〜2本だけチャート付きで。代表企業の百科事典・丁寧な全銘柄紹介は禁止。
 7. 【prev_ir_tracking】: `prev_ir_analysis` の銘柄ごとにシーンを作成。`chart_image_path` を表示し、変動率や直近ニュースを `on_screen_text` で表示しながら、前回から今回への変動要因(reason_summary)を説明。データがなければ **無言スキップ**（言い訳しない）。
 8. 【tomorrow_strategy】: `us_tonight_outlook` と本日のニュース束を踏まえ、明日の注目／注意（チェック3点）で締める。**`diagrams.checklist_path` があれば必ず `target_files` に指定**。各ニュースに `visual_image_path` があれば補助で含めてよい。
+    - `theme_bridge` があるとき、scope=theme の本命材料のみ strong related を「明日見る波及」として最大1点。weak は参考扱い。今日と無関係な定番連鎖は出さない。
+    - チェック3点は定型（金利・為替・地合い）の使い回し禁止。今日の固有名詞で作る。
 9. 【closing】: 掛け合いで締め。今回のまとめと次回の配信予告。`next_delivery_info` -> `is_holiday_gap` が True なら「市場がお休みのため少し間が空きます。次回は `date` の `time` 頃に投稿予定です。楽しみにお待ちくださいね」と付け加えてください。もし `next_delivery_info` -> `is_holiday_gap` が False なら最後に「明日朝7時のモーニングレポートもお楽しみに！」といった言葉で締めてください。
 
 # 分析データの追加キー
 - `diagrams.news_bundle_path` / `impact_flow_path` / `market_board_path` / `capital_flow_path` / `checklist_path`: 図解PNG。あるときは該当セクションで優先使用。
+- `theme_bridge`: 上記の通り（任意）。
 
 # 出力形式
 各シーンオブジェクトは必ず以下のキーを持ってください:
@@ -473,6 +512,9 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
         if is_immersive_mode(presentation_mode, video_type=video_type):
             print("[Mode] 台本生成: immersive（聞き中心・番組感）モード")
             prompt += self._immersive_prompt_appendix(analysis_data)
+
+        if not is_shorts:
+            prompt += build_anti_monotony_prompt_block(analysis_data)
 
         attempt = 0
         last_errs = []
@@ -577,6 +619,28 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
                             f"(最低{policy.min_publish_seconds}s) / シーン数={quality.scene_count}"
                         )
 
+                    # 脱マンネリ（ソフト：最後の試行以外はリトライ材料）
+                    mono_issues = evaluate_anti_monotony(scenes, analysis_data)
+                    if mono_issues:
+                        print(
+                            f"[WARN] 脱マンネリ指摘 (試行 {attempt}/{max_retries}): "
+                            + " / ".join(mono_issues[:3])
+                        )
+                        if attempt < max_retries:
+                            last_errs.extend(mono_issues)
+                            quality_retry_appendix += (
+                                "\n# 【脱マンネリ — 厳守して作り直す】\n"
+                                + "\n".join(f"- {x}" for x in mono_issues)
+                                + "\n"
+                            )
+                            continue
+                        print("[WARN] 脱マンネリ未達だが最終試行のため続行します")
+
+                    try:
+                        persist_after_script(scenes, analysis_data, video_type=video_type)
+                    except Exception as e:
+                        print(f"[WARN] anti_monotony履歴保存スキップ: {e}")
+
                 # --- 横型本編: 感情 timeline の補完（LLM が省略した場合） ---
                 if not is_shorts:
                     from src.video_generation.character_emotion import enrich_emotion_timelines
@@ -591,22 +655,32 @@ YouTubeショート（縦型動画）用の、60秒以内の超短縮台本を�
                 if is_shorts and ("shorts_b" in video_type):
                     self._ensure_placeholder_image(Path("data/images/placeholder.png"))
 
+                # --- Shorts: explained_term を台本から補完（メタデータ／履歴用） ---
+                if is_shorts:
+                    topic_name = ""
+                    for sc in scenes:
+                        if sc.get("explained_term"):
+                            topic_name = str(sc["explained_term"]).strip()
+                            break
+                        for line in sc.get("on_screen_text") or []:
+                            if str(line).startswith("■"):
+                                topic_name = str(line).replace("■", "").strip()
+                                break
+                        if topic_name:
+                            break
+                    if topic_name:
+                        for sc in scenes:
+                            if not sc.get("explained_term"):
+                                sc["explained_term"] = topic_name
+
                 # --- Shorts A: Pillowでやさしい株用語解説のアイキャッチカード画像を動的生成して差し込む ---
                 if is_shorts and ("shorts_a" in video_type):
-                    # 用語名の抽出
                     term_name = "株用語"
                     for sc in scenes:
                         if sc.get("explained_term"):
                             term_name = str(sc["explained_term"]).strip()
                             break
-                        elif sc.get("on_screen_text"):
-                            for line in sc["on_screen_text"]:
-                                if line.startswith("■"):
-                                    term_name = line.replace("■", "").strip()
-                                    break
-                            if term_name != "株用語":
-                                break
-                    
+
                     # 履歴に保存
                     if term_name != "株用語":
                         self._save_shorts_term_history(history_file, term_name)

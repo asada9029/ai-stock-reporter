@@ -19,6 +19,8 @@ from src.analysis.dialogue_util import (
     primary_speaker_for_scene,
     resolve_voicevox_id,
 )
+from src.analysis.anti_monotony import attach_anti_monotony_context
+from src.data_collection.recent_news_topics import load_recent_topics
 
 
 def _reorder_attention_news_for_thumbnail(
@@ -243,6 +245,16 @@ def compose_video_from_analysis(
                     f"[OK] attention_news をサムネ順に並べ替え（先頭=メイン: {reordered[0].get('title', '')[:40]}...）"
                 )
             print(f"[OK] サムネイル完成 & ニュース選定完了: {thumb_title}")
+            # サムネ確定後に脱マンネリ文脈を更新（フック連投抑制）
+            try:
+                attach_anti_monotony_context(
+                    analysis_data,
+                    video_type=video_type,
+                    recent_topics=load_recent_topics(limit=40),
+                    persist_history=False,
+                )
+            except Exception as e:
+                print(f"[WARN] anti_monotony再付与スキップ: {e}")
         except Exception as e:
             print(f"[WARN] サムネイル生成・選定失敗: {e}")
     else:
@@ -314,6 +326,13 @@ def compose_video_from_analysis(
             show_subtitles=True,
             presentation_mode=presentation_mode,
         )
+        if is_shorts and not (thumb_title or "").strip():
+            from src.upload.youtube_metadata import extract_shorts_topic_from_scenes
+
+            topic, topic_highlights = extract_shorts_topic_from_scenes(scenes, video_type)
+            thumb_title = topic
+            thumb_highlights = topic_highlights
+            print(f"[OK] ショート題材を台本から抽出: {thumb_title}")
         return video_path, thumb_path, thumb_title, thumb_highlights, ""
 
     print("-> 音声生成: 各シーンの音声を生成してシーン長を調整します...")
@@ -645,6 +664,15 @@ def compose_video_from_analysis(
             ac.close()
         
         print(f"[OK] 完成: {final_out}")
+
+        # ショートはサムネ生成をスキップするため、台本から題材を抽出してメタデータへ渡す
+        if is_shorts and not (thumb_title or "").strip():
+            from src.upload.youtube_metadata import extract_shorts_topic_from_scenes
+
+            topic, topic_highlights = extract_shorts_topic_from_scenes(scenes, video_type)
+            thumb_title = topic
+            thumb_highlights = topic_highlights
+            print(f"[OK] ショート題材を台本から抽出: {thumb_title}")
 
         return final_out, thumb_path, thumb_title, thumb_highlights, chapters_text
 
