@@ -1,8 +1,20 @@
 {
     "latest": {
-        "video_id": "auto_2026-09-30T22:08:32.673799",
-        "published_at": "2026-09-30T22:08:32.673799",
+        "video_id": "auto_2026-10-01T23:03:56.744565",
+        "published_at": "2026-10-01T23:03:56.744565",
         "ir_stocks": [
+            {
+                "name": "日立製作所",
+                "ticker": "6501.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "東京精密",
+                "ticker": "7729.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
             {
                 "name": "住友金属鉱山",
                 "ticker": "5713.T",
@@ -10,38 +22,68 @@
                 "ir_date": null
             },
             {
-                "name": "三菱UFJフィナンシャル・グループ",
+                "name": "ＥＮＥＯＳホールディングス",
+                "ticker": "5020.T",
+                "noted_ir": null,
+                "ir_date": null
+            },
+            {
+                "name": "三菱ＵＦＪフィナンシャル・グループ",
                 "ticker": "8306.T",
                 "noted_ir": null,
                 "ir_date": null
             },
             {
-                "name": "ニッパツ",
-                "ticker": "5991.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "INPEX",
-                "ticker": "1605.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "ニッスイ",
-                "ticker": "1332.T",
-                "noted_ir": null,
-                "ir_date": null
-            },
-            {
-                "name": "上組",
-                "ticker": "9364.T",
+                "name": "東京海上ホールディングス",
+                "ticker": "8766.T",
                 "noted_ir": null,
                 "ir_date": null
             }
         ]
     },
     "history": [
+        {
+            "video_id": "auto_2026-09-30T22:08:32.673799",
+            "published_at": "2026-09-30T22:08:32.673799",
+            "ir_stocks": [
+                {
+                    "name": "住友金属鉱山",
+                    "ticker": "5713.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "三菱UFJフィナンシャル・グループ",
+                    "ticker": "8306.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ニッパツ",
+                    "ticker": "5991.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "INPEX",
+                    "ticker": "1605.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "ニッスイ",
+                    "ticker": "1332.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                },
+                {
+                    "name": "上組",
+                    "ticker": "9364.T",
+                    "noted_ir": null,
+                    "ir_date": null
+                }
+            ]
+        },
         {
             "video_id": "auto_2026-09-29T22:27:27.480805",
             "published_at": "2026-09-29T22:27:27.480805",
@@ -583,48 +625,6 @@
                 {
                     "name": "三菱UFJフィナンシャル・グループ",
                     "ticker": "8306.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                }
-            ]
-        },
-        {
-            "video_id": "auto_2026-09-04T21:04:41.795693",
-            "published_at": "2026-09-04T21:04:41.795693",
-            "ir_stocks": [
-                {
-                    "name": "ソフトバンクグループ",
-                    "ticker": "9984.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "野村ホールディングス",
-                    "ticker": "8604.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "住友金属鉱山",
-                    "ticker": "5713.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "INPEX",
-                    "ticker": "1605.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "日本郵船",
-                    "ticker": "9101.T",
-                    "noted_ir": null,
-                    "ir_date": null
-                },
-                {
-                    "name": "ニッスイ",
-                    "ticker": "1332.T",
                     "noted_ir": null,
                     "ir_date": null
                 }
