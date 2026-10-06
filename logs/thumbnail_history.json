@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-15T18:10:07.526083",
-    "video_type": "evening_video",
-    "title": "【TSMC次世代工場】前倒しで半導体勢力図が激変"
-  },
-  {
     "date": "2026-07-16T05:52:19.376211",
     "video_type": "morning_video",
     "title": "【S&P500反発】AI熱狂が導く新たな局面"
@@ -498,5 +493,10 @@
     "date": "2026-10-06T10:05:38.684809",
     "video_type": "morning_video",
     "title": "【NVIDIA最高値更新】AI半導体ラリーの正念場"
+  },
+  {
+    "date": "2026-10-06T22:47:59.006098",
+    "video_type": "evening_video",
+    "title": "【アドバンテスト時価総額30兆円迫る】半導体覇権の新たな勝者"
   }
 ]
