@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-15T05:52:07.437469",
-    "video_type": "morning_video",
-    "title": "【AMD急騰】AI半導体で相場が激変"
-  },
-  {
     "date": "2026-07-15T18:10:07.526083",
     "video_type": "evening_video",
     "title": "【TSMC次世代工場】前倒しで半導体勢力図が激変"
@@ -498,5 +493,10 @@
     "date": "2026-10-05T07:38:42.291674",
     "video_type": "morning_video",
     "title": "【米国株雇用統計ショック】インフレ懸念後退で最高値迫る"
+  },
+  {
+    "date": "2026-10-06T10:05:38.684809",
+    "video_type": "morning_video",
+    "title": "【NVIDIA最高値更新】AI半導体ラリーの正念場"
   }
 ]
