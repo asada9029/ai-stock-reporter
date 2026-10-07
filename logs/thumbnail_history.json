@@ -1,10 +1,5 @@
 [
   {
-    "date": "2026-07-16T18:11:06.267579",
-    "video_type": "evening_video",
-    "title": "【全固体電池の勝者】トヨタが塗り替える車載常識"
-  },
-  {
     "date": "2026-07-17T05:48:52.306543",
     "video_type": "morning_video",
     "title": "【NVIDIA供給増】AI相場が再燃"
@@ -498,5 +493,10 @@
     "date": "2026-10-07T08:29:51.086128",
     "video_type": "morning_video",
     "title": "【S&P500最高値肉薄】AI半導体ラリーの狂騒"
+  },
+  {
+    "date": "2026-10-07T23:08:22.141213",
+    "video_type": "evening_video",
+    "title": "【カウリス連日のストップ高】サイバー攻撃激化で群がる買い"
   }
 ]
